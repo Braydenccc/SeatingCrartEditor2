@@ -23,6 +23,6 @@
   "description": "This template should help get you started developing with Vue 3 in Vite.",
   "main": "vite.config.js",
   "keywords": [],
-  "author": "",
-  "license": "ISC"
+  "author": "Braydenccc",
+  "license": "GPL-3.0-or-later"
 }
