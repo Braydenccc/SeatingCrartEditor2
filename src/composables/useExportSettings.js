@@ -1,0 +1,73 @@
+import { ref } from 'vue'
+
+// 导出设置
+const exportSettings = ref({
+  title: '班级座位表',
+  showTitle: true,
+  showRowNumbers: true,
+  showGroupLabels: true,
+  showPodium: true,
+  enableTagLabels: true,
+  tagSettings: {} // 格式: { tagId: { enabled: true, displayText: '文本' } }
+})
+
+export function useExportSettings() {
+  // 更新标题
+  const updateTitle = (title) => {
+    exportSettings.value.title = title
+  }
+
+  // 切换标题显示
+  const toggleTitleDisplay = (enabled) => {
+    exportSettings.value.showTitle = enabled
+  }
+
+  // 切换行号显示
+  const toggleRowNumbers = (enabled) => {
+    exportSettings.value.showRowNumbers = enabled
+  }
+
+  // 切换组号显示
+  const toggleGroupLabels = (enabled) => {
+    exportSettings.value.showGroupLabels = enabled
+  }
+
+  // 切换讲台显示
+  const togglePodium = (enabled) => {
+    exportSettings.value.showPodium = enabled
+  }
+
+  // 切换标签显示
+  const toggleTagLabels = (enabled) => {
+    exportSettings.value.enableTagLabels = enabled
+  }
+
+  // 更新单个标签设置
+  const updateTagSetting = (tagId, setting) => {
+    exportSettings.value.tagSettings[tagId] = setting
+  }
+
+  // 初始化标签设置
+  const initializeTagSettings = (tags) => {
+    tags.forEach(tag => {
+      if (!exportSettings.value.tagSettings[tag.id]) {
+        exportSettings.value.tagSettings[tag.id] = {
+          enabled: true,
+          displayText: tag.name.substring(0, 2) // 默认取前两个字
+        }
+      }
+    })
+  }
+
+  return {
+    exportSettings,
+    updateTitle,
+    toggleTitleDisplay,
+    toggleRowNumbers,
+    toggleGroupLabels,
+    togglePodium,
+    toggleTagLabels,
+    updateTagSetting,
+    initializeTagSettings
+  }
+}

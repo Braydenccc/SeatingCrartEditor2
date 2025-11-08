@@ -1,0 +1,182 @@
+<template>
+  <div class="zone-list-container">
+    <div class="zone-list-header">
+      <h4>选区列表</h4>
+      <button class="add-zone-btn" @click="handleAddZone">添加选区</button>
+    </div>
+
+    <div class="zone-list-content">
+      <ZoneItem
+        v-for="zone in zones"
+        :key="zone.id"
+        :zone="zone"
+        :is-selected="selectedZoneId === zone.id"
+  :available-tags="tags"
+        :zone-color="getZoneColor(zone.id)"
+        @select="handleSelectZone"
+        @update-zone="handleUpdateZone"
+        @delete-zone="handleDeleteZone"
+        @add-tag="handleAddTag"
+        @remove-tag="handleRemoveTag"
+        @toggle-visible="handleToggleVisible"
+      />
+      <div v-if="zones.length === 0" class="empty-zone-list">
+        <p>暂无选区</p>
+        <p class="hint">点击"添加选区"按钮创建新选区</p>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import ZoneItem from './ZoneItem.vue'
+import { useZoneData } from '@/composables/useZoneData'
+import { useTagData } from '@/composables/useTagData'
+import { useEditMode, EditMode } from '@/composables/useEditMode'
+
+const {
+  zones,
+  selectedZoneId,
+  addZone,
+  updateZone,
+  deleteZone,
+  addTagToZone,
+  removeTagFromZone,
+  getZoneColor,
+  selectZone,
+  clearZoneSelection,
+  toggleZoneVisible
+} = useZoneData()
+
+const { tags } = useTagData()
+const { setMode } = useEditMode()
+
+// 添加选区
+const handleAddZone = () => {
+  const newZone = addZone()
+  // 自动选中新选区并进入选区编辑模式
+  selectZone(newZone.id)
+  setMode(EditMode.ZONE_EDIT)
+}
+
+// 选择选区
+const handleSelectZone = (zoneId) => {
+  if (selectedZoneId.value === zoneId) {
+    // 取消选中,退出选区编辑模式
+    clearZoneSelection()
+    setMode(EditMode.NORMAL)
+  } else {
+    // 选中选区,进入选区编辑模式
+    selectZone(zoneId)
+    setMode(EditMode.ZONE_EDIT)
+  }
+}
+
+// 更新选区
+const handleUpdateZone = (zoneId, updates) => {
+  updateZone(zoneId, updates)
+}
+
+// 删除选区
+const handleDeleteZone = (zoneId) => {
+  deleteZone(zoneId)
+  // 如果删除的是当前选中的选区,退出选区编辑模式
+  if (selectedZoneId.value === zoneId) {
+    setMode(EditMode.NORMAL)
+  }
+}
+
+// 为选区添加标签
+const handleAddTag = (zoneId, tagId) => {
+  addTagToZone(zoneId, tagId)
+}
+
+// 从选区移除标签
+const handleRemoveTag = (zoneId, tagId) => {
+  removeTagFromZone(zoneId, tagId)
+}
+
+// 切换选区可见性
+const handleToggleVisible = (zoneId) => {
+  toggleZoneVisible(zoneId)
+}
+</script>
+
+<style scoped>
+.zone-list-container {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 16px;
+}
+
+.zone-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.zone-list-header h4 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #23587b;
+}
+
+.add-zone-btn {
+  padding: 6px 12px;
+  background: linear-gradient(135deg, #23587b 0%, #2d6a94 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.add-zone-btn:hover {
+  background: linear-gradient(135deg, #1a4460 0%, #234e6d 100%);
+  transform: translateY(-1px);
+}
+
+.zone-list-content {
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.zone-list-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.zone-list-content::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.zone-list-content::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 3px;
+}
+
+.zone-list-content::-webkit-scrollbar-thumb:hover {
+  background: #999;
+}
+
+.empty-zone-list {
+  text-align: center;
+  padding: 30px 20px;
+  color: #999;
+}
+
+.empty-zone-list p {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+}
+
+.empty-zone-list .hint {
+  font-size: 12px;
+  color: #bbb;
+}
+</style>

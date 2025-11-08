@@ -1,0 +1,184 @@
+import { ref, computed } from 'vue'
+
+// 座位表配置
+const seatConfig = ref({
+  groupCount: 4,        // 大组数量
+  columnsPerGroup: 2,   // 每大组的列数
+  seatsPerColumn: 7     // 每列的座位数
+})
+
+// 座位数据
+const seats = ref([])
+
+// 生成座位ID
+function generateSeatId(groupIndex, columnIndex, rowIndex) {
+  return `seat-${groupIndex}-${columnIndex}-${rowIndex}`
+}
+
+// 初始化座位表
+function initializeSeats() {
+  const newSeats = []
+  const { groupCount, columnsPerGroup, seatsPerColumn } = seatConfig.value
+
+  for (let g = 0; g < groupCount; g++) {
+    for (let c = 0; c < columnsPerGroup; c++) {
+      for (let r = 0; r < seatsPerColumn; r++) {
+        newSeats.push({
+          id: generateSeatId(g, c, r),
+          groupIndex: g,
+          columnIndex: c,
+          rowIndex: r,
+          studentId: null,
+          isEmpty: false
+        })
+      }
+    }
+  }
+
+  seats.value = newSeats
+}
+
+// 按组和列组织座位数据（用于渲染）
+const organizedSeats = computed(() => {
+  const { groupCount, columnsPerGroup } = seatConfig.value
+  const groups = []
+
+  for (let g = 0; g < groupCount; g++) {
+    const columns = []
+    for (let c = 0; c < columnsPerGroup; c++) {
+      const columnSeats = seats.value.filter(
+        seat => seat.groupIndex === g && seat.columnIndex === c
+      ).sort((a, b) => a.rowIndex - b.rowIndex)
+      columns.push(columnSeats)
+    }
+    groups.push(columns)
+  }
+
+  return groups
+})
+
+export function useSeatChart() {
+  // 分配学生到座位
+  const assignStudent = (seatId, studentId) => {
+    const seat = seats.value.find(s => s.id === seatId)
+    if (seat && !seat.isEmpty) {
+      seat.studentId = studentId
+      return true
+    }
+    return false
+  }
+
+  // 切换空置状态
+  const toggleEmpty = (seatId) => {
+    const seat = seats.value.find(s => s.id === seatId)
+    if (seat) {
+      seat.isEmpty = !seat.isEmpty
+      if (seat.isEmpty) {
+        seat.studentId = null  // 空置座位清除学生
+      }
+    }
+  }
+
+  // 清空座位
+  const clearSeat = (seatId) => {
+    const seat = seats.value.find(s => s.id === seatId)
+    if (seat) {
+      seat.studentId = null
+    }
+  }
+
+  // 交换两个座位的学生
+  const swapSeats = (seatId1, seatId2) => {
+    const seat1 = seats.value.find(s => s.id === seatId1)
+    const seat2 = seats.value.find(s => s.id === seatId2)
+    if (seat1 && seat2) {
+      const temp = seat1.studentId
+      seat1.studentId = seat2.studentId
+      seat2.studentId = temp
+    }
+  }
+
+  // 更新配置
+  const updateConfig = (newConfig) => {
+    seatConfig.value = { ...seatConfig.value, ...newConfig }
+    initializeSeats()  // 重新初始化座位
+  }
+
+  // 获取座位上的学生ID
+  const getStudentAtSeat = (seatId) => {
+    const seat = seats.value.find(s => s.id === seatId)
+    return seat ? seat.studentId : null
+  }
+
+  // 查找学生所在座位
+  const findSeatByStudent = (studentId) => {
+    return seats.value.find(s => s.studentId === studentId)
+  }
+
+  // 清空所有座位
+  const clearAllSeats = () => {
+    seats.value.forEach(seat => {
+      seat.studentId = null
+    })
+  }
+
+  // 解析座位ID获取索引信息
+  const parseSeatId = (seatId) => {
+    // 格式: "seat-{groupIndex}-{columnIndex}-{rowIndex}"
+    const parts = seatId.split('-')
+    return {
+      groupIndex: parseInt(parts[1]),
+      columnIndex: parseInt(parts[2]),
+      rowIndex: parseInt(parts[3])
+    }
+  }
+
+  // 判断两个座位是否为同桌
+  const areDeskmates = (seatId1, seatId2) => {
+    const seat1 = parseSeatId(seatId1)
+    const seat2 = parseSeatId(seatId2)
+
+    // 同桌 = 同大组 且 同排(rowIndex相同)
+    return seat1.groupIndex === seat2.groupIndex && seat1.rowIndex === seat2.rowIndex
+  }
+
+  // 查找指定座位的同桌座位
+  const findDeskmates = (seatId) => {
+    const parsed = parseSeatId(seatId)
+    return seats.value.filter(seat =>
+      seat.groupIndex === parsed.groupIndex &&
+      seat.rowIndex === parsed.rowIndex &&
+      seat.id !== seatId
+    )
+  }
+
+  // 获取所有可用座位(非空置)
+  const getAvailableSeats = () => {
+    return seats.value.filter(seat => !seat.isEmpty)
+  }
+
+  // 获取所有空座位(无学生且非空置)
+  const getEmptySeats = () => {
+    return seats.value.filter(seat => !seat.isEmpty && seat.studentId === null)
+  }
+
+  return {
+    seatConfig,
+    seats,
+    organizedSeats,
+    initializeSeats,
+    assignStudent,
+    toggleEmpty,
+    clearSeat,
+    swapSeats,
+    updateConfig,
+    getStudentAtSeat,
+    findSeatByStudent,
+    clearAllSeats,
+    parseSeatId,
+    areDeskmates,
+    findDeskmates,
+    getAvailableSeats,
+    getEmptySeats
+  }
+}
