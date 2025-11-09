@@ -3,7 +3,27 @@ const fs = require('fs');
 const path = require('path');
 
 // dist 目录（构建输出）
-const DIST = path.join(__dirname, 'dist');
+// 当打包为 exe 时，需要从 exe 所在目录向上查找 dist 目录
+// 或者直接使用当前目录（假设 exe 在 dist/bin 下，需要访问 dist 下的文件）
+let DIST = path.join(__dirname, 'dist');
+
+// 检查是否是打包后的可执行文件（pkg 会设置 process.pkg）
+if (process.pkg) {
+  // exe 所在目录就是 dist 目录（或者 exe 在 dist/bin 下）
+  const exeDir = path.dirname(process.execPath);
+  const exeDirName = path.basename(exeDir);
+
+  if (exeDirName === 'bin') {
+    // exe 在 dist/bin 目录下，需要访问上级目录（dist）
+    DIST = path.join(exeDir, '..');
+  } else {
+    // exe 直接在 dist 目录下
+    DIST = exeDir;
+  }
+} else {
+  // 开发模式，从项目根目录的 dist 目录读取
+  DIST = path.join(__dirname, 'dist');
+}
 
 const mime = {
   '.html': 'text/html; charset=utf-8',
@@ -53,4 +73,9 @@ const server = http.createServer((req, res) => {
 const port = process.env.PORT || 3000;
 server.listen(port, () => {
   console.log(`Serving built app from ${DIST} on http://localhost:${port}`);
+  console.log(`DIST path: ${DIST}`);
+  console.log(`__dirname: ${__dirname}`);
+  if (process.pkg) {
+    console.log(`Running as packaged executable from: ${process.execPath}`);
+  }
 });
