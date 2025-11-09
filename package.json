@@ -9,9 +9,11 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:exe": "npm run build && pkg server.cjs --targets node18-win-x64 --out-path dist/bin"
   },
   "dependencies": {
+    "pkg": "^5.8.1",
     "vue": "^3.5.22",
     "xlsx": "^0.18.5"
   },
@@ -22,7 +24,14 @@
   },
   "description": "This template should help get you started developing with Vue 3 in Vite.",
   "main": "vite.config.js",
+  "bin": "server.cjs",
   "keywords": [],
   "author": "Braydenccc",
   "license": "GPL-3.0-or-later"
+
+  ,"pkg": {
+    "assets": [
+      "dist/**/*"
+    ]
+  }
 }
