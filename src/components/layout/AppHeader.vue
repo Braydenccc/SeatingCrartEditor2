@@ -1,7 +1,7 @@
 <template>
   <header class="app-header">
     <h1 class="header-text">BraydenSCE V2</h1>
-    <p class="header-subtitle">座位表编辑器 开发版本 https://github.com/Braydenccc/SeatingCrartEditor2</p>
+    <p class="header-subtitle">座位表编辑器 开发版本 byccc https://github.com/Braydenccc/SeatingCrartEditor2</p>
   </header>
 </template>
 
