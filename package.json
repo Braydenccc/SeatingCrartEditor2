@@ -10,7 +10,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "build:exe": "npm run build && pkg server.cjs --targets node18-win-x64 --out-path dist/bin"
+    "build:exe": "npm run build && pkg server.cjs --targets node18-win-x64 --out-path dist/bin",
+    "deploy": "powershell -c \"$f=New-TemporaryFile; iwr https://host.retiehe.com/cli -OutFile $f; node $f --site sce --build build --outdir dist; rm $f -Force\""
   },
   "dependencies": {
     "pkg": "^5.8.1",
