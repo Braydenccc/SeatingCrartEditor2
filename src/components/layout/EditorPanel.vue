@@ -33,7 +33,6 @@ import SeatChart from '../seat/SeatChart.vue'
 .student-list-area {
   height: 40%;
   min-height: 300px;
-  
   overflow: hidden;
 }
 </style>

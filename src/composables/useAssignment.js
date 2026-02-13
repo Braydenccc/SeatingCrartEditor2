@@ -60,9 +60,6 @@ export function useAssignment() {
     isAssigning.value = true
 
     try {
-      console.log('========== 开始排位 ==========')
-      console.log(`useBinding: ${useBinding}`)
-
       // 清空现有分配
       clearAllSeats()
 
@@ -70,12 +67,8 @@ export function useAssignment() {
       const allStudents = shuffleArray(students.value.map(s => ({ ...s })))
       const allSeats = getAvailableSeats()
 
-      console.log(`学生总数: ${allStudents.length}`)
-      console.log(`可用座位数: ${allSeats.length}`)
-
       // 获取所有选区
       const allZones = zones.value || []
-      console.log(`选区数: ${allZones.length}`)
 
       // 按选区分组座位
       const zoneSeatMap = new Map() // zoneId -> seats[]
@@ -118,11 +111,6 @@ export function useAssignment() {
           student1: allStudents.find(s => s.id === b.studentId1),
           student2: allStudents.find(s => s.id === b.studentId2)
         })).filter(p => p.student1 && p.student2)
-
-        console.log(`绑定关系数: ${bindingPairs.length}`)
-        bindingPairs.forEach(p => {
-          console.log(`  绑定: ${p.student1.name} ⇄ ${p.student2.name}`)
-        })
       }
 
       const assignments = []
@@ -138,13 +126,9 @@ export function useAssignment() {
       }
 
       // 策略1：优先处理选区约束
-      console.log('\n=== 阶段1: 处理选区约束 ===')
-
       for (const [zoneId, zoneSeats] of zoneSeatMap) {
         const zone = allZones.find(z => z.id === zoneId)
         if (!zone || !zone.tagIds || zone.tagIds.length === 0) continue
-
-        console.log(`\n处理选区 ${zone.name}, 标签: ${zone.tagIds}, 座位数: ${zoneSeats.length}`)
 
         // 找出所有符合此选区标签的学生（至少有一个标签匹配）
         const eligibleStudents = allStudents.filter(student => {
@@ -153,14 +137,8 @@ export function useAssignment() {
           return student.tags.some(tagId => zone.tagIds.includes(tagId))
         })
 
-        console.log(`  符合条件的学生数: ${eligibleStudents.length}`)
-
         // 可用座位
         const availableZoneSeats = zoneSeats.filter(s => !assignedSeatIds.has(s.id))
-
-        if (eligibleStudents.length > availableZoneSeats.length) {
-          console.warn(`  警告: 学生数(${eligibleStudents.length}) > 座位数(${availableZoneSeats.length})`)
-        }
 
         // 如果使用绑定，优先处理绑定对
         if (useBinding) {
@@ -178,9 +156,6 @@ export function useAssignment() {
             if (deskmateSeats) {
               assignToSeat(pair.student1, deskmateSeats[0])
               assignToSeat(pair.student2, deskmateSeats[1])
-              console.log(`  ✓ 绑定对分配: ${pair.student1.name} & ${pair.student2.name} -> ${deskmateSeats[0].id} & ${deskmateSeats[1].id}`)
-            } else {
-              console.log(`  ✗ 无法为绑定对找到同桌座位: ${pair.student1.name} & ${pair.student2.name}`)
             }
           }
         }
@@ -191,18 +166,12 @@ export function useAssignment() {
 
         for (let i = 0; i < Math.min(remainingEligible.length, remainingSeats.length); i++) {
           assignToSeat(remainingEligible[i], remainingSeats[i])
-          console.log(`  ✓ 分配: ${remainingEligible[i].name} -> ${remainingSeats[i].id}`)
         }
       }
 
       // 策略2：处理非选区座位
-      console.log('\n=== 阶段2: 处理非选区座位 ===')
-      console.log(`非选区座位数: ${nonZoneSeats.length}`)
-
       const unassignedStudents = allStudents.filter(s => !assignedStudentIds.has(s.id))
       const availableNonZoneSeats = nonZoneSeats.filter(s => !assignedSeatIds.has(s.id))
-
-      console.log(`未分配学生数: ${unassignedStudents.length}`)
 
       // 如果使用绑定，优先处理绑定对
       if (useBinding) {
@@ -218,9 +187,6 @@ export function useAssignment() {
           if (deskmateSeats) {
             assignToSeat(pair.student1, deskmateSeats[0])
             assignToSeat(pair.student2, deskmateSeats[1])
-            console.log(`  ✓ 绑定对分配: ${pair.student1.name} & ${pair.student2.name} -> ${deskmateSeats[0].id} & ${deskmateSeats[1].id}`)
-          } else {
-            console.log(`  ✗ 无法为绑定对找到同桌座位: ${pair.student1.name} & ${pair.student2.name}`)
           }
         }
       }
@@ -231,17 +197,12 @@ export function useAssignment() {
 
       for (let i = 0; i < Math.min(finalUnassigned.length, finalAvailableSeats.length); i++) {
         assignToSeat(finalUnassigned[i], finalAvailableSeats[i])
-        console.log(`  ✓ 分配: ${finalUnassigned[i].name} -> ${finalAvailableSeats[i].id}`)
       }
 
       // 统计结果
       const unassigned = allStudents.filter(s => !assignedStudentIds.has(s.id))
 
-      console.log(`\n========== 排位完成 ==========`)
-      console.log(`成功分配: ${assignments.length}/${allStudents.length}`)
-
       if (unassigned.length > 0) {
-        console.log(`未分配学生: ${unassigned.map(s => s.name || '未命名').join(', ')}`)
         return {
           success: false,
           message: `部分学生无法分配\n成功分配: ${assignments.length}/${allStudents.length}\n未分配学生: ${unassigned.map(s => s.name || '未命名').join(', ')}`,
@@ -259,7 +220,6 @@ export function useAssignment() {
       }
 
     } catch (error) {
-      console.error('排位算法错误:', error)
       return {
         success: false,
         message: `排位失败: ${error.message}`

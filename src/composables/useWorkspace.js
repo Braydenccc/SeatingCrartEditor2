@@ -52,7 +52,6 @@ export function useWorkspace() {
 
       return true
     } catch (error) {
-      console.error('保存工作区失败:', error)
       return false
     }
   }

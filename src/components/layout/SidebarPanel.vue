@@ -213,15 +213,16 @@
                 <span class="tag-color-dot" :style="{ backgroundColor: tag.color }"></span>
                 <span>{{ tag.name }}</span>
               </label>
+              <div v-if="tagSettingsLocal[tag.id] && tagSettingsLocal[tag.id].enabled">
+              <p class="tag-display-text-label">导出时标签名称</p>
               <input
-                v-if="tagSettingsLocal[tag.id] && tagSettingsLocal[tag.id].enabled"
                 type="text"
                 v-model="tagSettingsLocal[tag.id].displayText"
                 @blur="updateTagSettings()"
                 class="tag-text-input"
                 placeholder="显示文本"
                 maxlength="4"
-              />
+              /></div>
             </div>
           </div>
         </div>
@@ -273,7 +274,7 @@ import { useSidebar } from '@/composables/useSidebar'
 import { useSeatChart } from '@/composables/useSeatChart'
 import { useEditMode } from '@/composables/useEditMode'
 import { useAssignment } from '@/composables/useAssignment'
-import { useTagData, initializeTags } from '@/composables/useTagData'
+import { useTagData } from '@/composables/useTagData'
 import { useStudentData } from '@/composables/useStudentData'
 import { useExportSettings } from '@/composables/useExportSettings'
 import { useImageExport } from '@/composables/useImageExport'
@@ -538,7 +539,6 @@ const handleExportImage = () => {
     exportToImage()
     success('图片导出成功！')
   } catch (err) {
-    console.error('导出失败:', err)
     error(`导出失败: ${err.message || '未知错误'}`)
   }
 }
@@ -881,6 +881,12 @@ const formatLogTime = (timestamp) => {
   width: 16px;
   height: 16px;
   cursor: pointer;
+}
+
+.tag-display-text-label {
+  font-size: 14px;
+  color: #666;
+  margin-top: 4px;
 }
 
 .tag-color-dot {
