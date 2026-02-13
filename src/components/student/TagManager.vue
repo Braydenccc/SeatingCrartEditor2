@@ -21,7 +21,13 @@
         <span class="tag-name">{{ tag.name }}</span>
         <div class="tag-actions">
           <button class="tag-action-btn" @click="editTagHandler(tag)">编辑</button>
-          <button class="tag-action-btn delete" @click="deleteTagHandler(tag.id)">删除</button>
+          <button
+            class="tag-action-btn delete"
+            :class="{ confirming: isDeletingTag(tag.id).value }"
+            @click="deleteTagHandler(tag.id, tag.name)"
+          >
+            {{ isDeletingTag(tag.id).value ? '再次点击' : '删除' }}
+          </button>
         </div>
       </div>
     </div>
@@ -60,9 +66,11 @@
 </template>
 
 <script setup>
-import { ref, nextTick } from 'vue'
+import { ref, nextTick, computed } from 'vue'
 import EmptyState from '../ui/EmptyState.vue'
 import { getNextColor } from '@/constants/tagColors'
+import { useConfirmAction } from '@/composables/useConfirmAction'
+import { useLogger } from '@/composables/useLogger'
 
 const props = defineProps({
   tags: {
@@ -72,6 +80,9 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['add-tag', 'edit-tag', 'delete-tag'])
+
+const { requestConfirm, isConfirming } = useConfirmAction()
+const { warning } = useLogger()
 
 const dialogVisible = ref(false)
 const isEditing = ref(false)
@@ -126,9 +137,19 @@ const saveTag = () => {
   closeDialog()
 }
 
-const deleteTagHandler = (tagId) => {
-  if (confirm('确定要删除这个标签吗?删除后将从所有学生中移除此标签。')) {
-    emit('delete-tag', tagId)
+// 删除标签确认状态
+const getDeletingKey = (tagId) => `deleteTag-${tagId}`
+const isDeletingTag = (tagId) => isConfirming(getDeletingKey(tagId))
+
+const deleteTagHandler = (tagId, tagName) => {
+  const confirmed = requestConfirm(
+    getDeletingKey(tagId),
+    () => emit('delete-tag', tagId),
+    `确定要删除标签"${tagName}"吗？将从所有学生中移除`
+  )
+
+  if (!confirmed) {
+    warning(`请再次点击删除按钮以确认删除标签"${tagName}"`)
   }
 }
 </script>
@@ -258,6 +279,24 @@ const deleteTagHandler = (tagId) => {
 .tag-action-btn.delete:hover {
   background: #f44336;
   color: white;
+}
+
+.tag-action-btn.delete.confirming {
+  background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%) !important;
+  color: white !important;
+  animation: pulse 0.8s ease-in-out infinite;
+  box-shadow: 0 0 0 2px rgba(255, 152, 0, 0.2);
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 2px rgba(255, 152, 0, 0.2);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 4px rgba(255, 152, 0, 0.3);
+  }
 }
 
 /* 对话框样式 */

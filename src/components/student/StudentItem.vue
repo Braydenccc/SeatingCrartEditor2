@@ -63,7 +63,9 @@
     </div>
 
     <div class="student-actions">
-      <button class="delete-student-btn" @click="deleteHandler">删除</button>
+      <button class="delete-student-btn" :class="{ confirming: isDeleting.value }" @click="deleteHandler">
+        {{ isDeleting.value ? '再次点击确认' : '删除' }}
+      </button>
     </div>
 
     <!-- 标签选择器 (teleport 到 body 避免被父容器裁剪) -->
@@ -89,6 +91,8 @@
 <script setup>
 import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
 import { useStudentData } from '@/composables/useStudentData'
+import { useConfirmAction } from '@/composables/useConfirmAction'
+import { useLogger } from '@/composables/useLogger'
 
 const props = defineProps({
   student: {
@@ -105,6 +109,8 @@ const props = defineProps({
 const emit = defineEmits(['update-student', 'delete-student'])
 
 const { selectedStudentId, selectStudent } = useStudentData()
+const { requestConfirm, isConfirming } = useConfirmAction()
+const { warning } = useLogger()
 
 const isEditingName = ref(false)
 const isEditingNumber = ref(false)
@@ -273,10 +279,20 @@ const removeTag = (tagId) => {
   })
 }
 
+// 删除确认状态
+const deleteKey = computed(() => `deleteStudent-${props.student.id}`)
+const isDeleting = isConfirming(deleteKey.value)
+
 const deleteHandler = () => {
   const displayName = props.student.name || '未命名学生'
-  if (confirm(`确定要删除"${displayName}"吗?`)) {
-    emit('delete-student', props.student.id)
+  const confirmed = requestConfirm(
+    deleteKey.value,
+    () => emit('delete-student', props.student.id),
+    `确定要删除"${displayName}"吗？`
+  )
+
+  if (!confirmed) {
+    warning(`请再次点击删除按钮以确认删除"${displayName}"`)
   }
 }
 </script>
@@ -487,6 +503,23 @@ const deleteHandler = () => {
 
 .delete-student-btn:active {
   transform: translateY(0);
+}
+
+.delete-student-btn.confirming {
+  background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%) !important;
+  animation: pulse 0.8s ease-in-out infinite;
+  box-shadow: 0 0 0 3px rgba(255, 152, 0, 0.2);
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 3px rgba(255, 152, 0, 0.2);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 6px rgba(255, 152, 0, 0.3);
+  }
 }
 
 .tag-picker {

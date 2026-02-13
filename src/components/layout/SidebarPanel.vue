@@ -140,11 +140,11 @@
 
         <div class="options-group">
           <label class="checkbox-label">
-            <input type="checkbox" v-model="useBinding" />
-            <span>使用同桌绑定</span>
+            <input type="checkbox" v-model="useRelations" />
+            <span>使用座位联系</span>
           </label>
-          <button class="option-button primary" @click="showBindingEditor = true">
-            <span>座位绑定编辑</span>
+          <button class="option-button primary" @click="showRelationEditor = true">
+            <span>座位联系编辑</span>
           </button>
         </div>
 
@@ -261,10 +261,10 @@
     </div>
   </div>
 
-  <!-- 座位绑定编辑器模态框 -->
-  <SeatBindingEditor
-    :visible="showBindingEditor"
-    @close="showBindingEditor = false"
+  <!-- 座位联系编辑器模态框 -->
+  <SeatRelationEditor
+    :visible="showRelationEditor"
+    @close="showRelationEditor = false"
   />
 </template>
 
@@ -282,8 +282,9 @@ import { useExcelData } from '@/composables/useExcelData'
 import { useWorkspace } from '@/composables/useWorkspace'
 import { useLogger } from '@/composables/useLogger'
 import { useConfirmAction } from '@/composables/useConfirmAction'
+import { useSeatRelation } from '@/composables/useSeatRelation'
 import ZoneList from '../zone/ZoneList.vue'
-import SeatBindingEditor from '../binding/SeatBindingEditor.vue'
+import SeatRelationEditor from '../relation/SeatRelationEditor.vue'
 
 const { activeTab, setActiveTab } = useSidebar()
 const { seatConfig, updateConfig, clearAllSeats, seats } = useSeatChart()
@@ -296,7 +297,7 @@ const { exportToImage } = useImageExport()
 const { downloadTemplate, importFromExcel, exportToExcel } = useExcelData()
 const { saveWorkspace, loadWorkspace } = useWorkspace()
 const { logs, success, warning, error, clearLogs } = useLogger()
-const { requestConfirm } = useConfirmAction()
+const { requestConfirm, isConfirming } = useConfirmAction()
 
 const tabs = [
   { id: 1, label: '文件' },
@@ -312,11 +313,11 @@ const configForm = ref({
   seatsPerColumn: 6
 })
 
-// 绑定编辑器显示状态
-const showBindingEditor = ref(false)
+// 联系编辑器显示状态
+const showRelationEditor = ref(false)
 
-// 是否使用座位绑定
-const useBinding = ref(false)
+// 是否使用座位联系
+const useRelations = ref(false)
 
 // 文件输入引用
 const workspaceInput = ref(null)
@@ -404,6 +405,28 @@ const handleLoadWorkspace = async (event) => {
         })
       }
 
+      // 恢复联系关系
+      if (workspace.relations && Array.isArray(workspace.relations)) {
+        const { clearAllRelations, addRelation } = useSeatRelation()
+        clearAllRelations()
+
+        workspace.relations.forEach(r => {
+          const newStudentId1 = oldStudentIdToNewId[r.studentId1]
+          const newStudentId2 = oldStudentIdToNewId[r.studentId2]
+
+          // 只有当两个学生都成功映射时才恢复联系
+          if (newStudentId1 && newStudentId2) {
+            addRelation(
+              newStudentId1,
+              newStudentId2,
+              r.relationType,
+              r.strength || 'high',
+              r.metadata || {}
+            )
+          }
+        })
+      }
+
       success('工作区加载并恢复成功！')
     } catch (err) {
       error('恢复工作区时发生错误: ' + (err.message || err))
@@ -434,49 +457,44 @@ const handleImportExcel = async (event) => {
       return
     }
 
-    // 定义导入操作
-    const doImport = () => {
-      // 清除现有数据
-      clearAllStudents()
-      clearAllTags()
+    // 直接导入，覆盖现有数据
+    // 清除现有数据
+    clearAllStudents()
+    clearAllTags()
 
-      // 预定义颜色列表
-      const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E2', '#F8B739', '#52B788']
+    // 预定义颜色列表
+    const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E2', '#F8B739', '#52B788']
 
-      // 创建所有标签并建立名称到ID的映射
-      const tagNameToId = {}
-      result.tagNames.forEach((tagName, index) => {
-        const color = colors[index % colors.length]
-        addTag({ name: tagName, color })
+    // 创建所有标签并建立名称到ID的映射
+    const tagNameToId = {}
+    result.tagNames.forEach((tagName, index) => {
+      const color = colors[index % colors.length]
+      addTag({ name: tagName, color })
 
-        // 直接从tags数组中找到刚添加的标签
-        const foundTag = tags.value.find(t => t.name === tagName)
-        if (foundTag) {
-          tagNameToId[tagName] = foundTag.id
-        }
+      // 直接从tags数组中找到刚添加的标签
+      const foundTag = tags.value.find(t => t.name === tagName)
+      if (foundTag) {
+        tagNameToId[tagName] = foundTag.id
+      }
+    })
+
+    // 导入所有学生
+    result.students.forEach(studentData => {
+      // 将标签名称转换为标签ID
+      const studentTags = studentData.tagNames
+        .map(tagName => tagNameToId[tagName])
+        .filter(id => id != null)
+
+      const newStudentId = addStudent()
+      updateStudent(newStudentId, {
+        name: studentData.name,
+        studentNumber: studentData.studentNumber,
+        tags: studentTags
       })
+    })
 
-      // 导入所有学生
-      result.students.forEach(studentData => {
-        // 将标签名称转换为标签ID
-        const studentTags = studentData.tagNames
-          .map(tagName => tagNameToId[tagName])
-          .filter(id => id != null)
-
-        const newStudentId = addStudent()
-        updateStudent(newStudentId, {
-          name: studentData.name,
-          studentNumber: studentData.studentNumber,
-          tags: studentTags
-        })
-      })
-
-      success(`成功导入 ${result.students.length} 个学生，${result.tagNames.length} 个标签`)
-      event.target.value = ''
-    }
-
-    // 直接导入（取消二次确认），覆盖现有数据
-    doImport()
+    success(`成功导入 ${result.students.length} 个学生，${result.tagNames.length} 个标签`)
+    event.target.value = ''
   } catch (err) {
     error(`导入失败: ${err.message}`)
     event.target.value = ''
@@ -578,7 +596,7 @@ const toggleClearMode = () => {
 const handleRunAssignment = async () => {
   if (isAssigning.value) return
 
-  const result = await runAssignment(useBinding.value)
+  const result = await runAssignment(useRelations.value)
 
   if (result.success) {
     success(result.message)
@@ -787,6 +805,25 @@ const formatLogTime = (timestamp) => {
 .option-button.active:hover {
   background: linear-gradient(135deg, #1a4460 0%, #234e6d 100%);
   box-shadow: 0 4px 12px rgba(35, 88, 123, 0.4);
+}
+
+.option-button.confirming {
+  background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%) !important;
+  color: white !important;
+  border-color: #FF9800 !important;
+  animation: pulse 0.8s ease-in-out infinite;
+  box-shadow: 0 0 0 3px rgba(255, 152, 0, 0.2);
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 3px rgba(255, 152, 0, 0.2);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 6px rgba(255, 152, 0, 0.3);
+  }
 }
 
 .input-group {

@@ -162,6 +162,89 @@ export function useSeatChart() {
     return seats.value.filter(seat => !seat.isEmpty && seat.studentId === null)
   }
 
+  // ==================== 座位距离与相邻性 ====================
+
+  /**
+   * 计算两个座位之间的曼哈顿距离
+   * @param {string} seatId1 - 座位1的ID
+   * @param {string} seatId2 - 座位2的ID
+   * @returns {number} 距离值，不同大组返回Infinity
+   */
+  const getSeatDistance = (seatId1, seatId2) => {
+    if (seatId1 === seatId2) return 0
+
+    const seat1 = parseSeatId(seatId1)
+    const seat2 = parseSeatId(seatId2)
+
+    // 不同大组视为无限远
+    if (seat1.groupIndex !== seat2.groupIndex) {
+      return Infinity
+    }
+
+    // 同一大组内，使用曼哈顿距离
+    const colDiff = Math.abs(seat1.columnIndex - seat2.columnIndex)
+    const rowDiff = Math.abs(seat1.rowIndex - seat2.rowIndex)
+
+    return colDiff + rowDiff
+  }
+
+  /**
+   * 获取指定座位的相邻座位
+   * @param {string} seatId - 座位ID
+   * @param {number} maxDistance - 最大距离（默认1表示直接相邻）
+   * @returns {Array} 相邻座位数组
+   */
+  const getAdjacentSeats = (seatId, maxDistance = 1) => {
+    const parsed = parseSeatId(seatId)
+
+    return seats.value.filter(seat => {
+      // 必须在同一大组
+      if (seat.groupIndex !== parsed.groupIndex) return false
+
+      // 排除自己
+      if (seat.id === seatId) return false
+
+      // 排除空置座位
+      if (seat.isEmpty) return false
+
+      // 计算距离
+      const distance = getSeatDistance(seatId, seat.id)
+
+      return distance > 0 && distance <= maxDistance
+    })
+  }
+
+  /**
+   * 验证两个座位是否满足排斥关系的最小距离要求
+   * @param {string} seatId1 - 座位1的ID
+   * @param {string} seatId2 - 座位2的ID
+   * @param {number} minDistance - 最小距离要求
+   * @returns {boolean} true表示满足排斥要求（距离足够远）
+   */
+  const validateRepulsion = (seatId1, seatId2, minDistance = 2) => {
+    const distance = getSeatDistance(seatId1, seatId2)
+    return distance >= minDistance
+  }
+
+  /**
+   * 获取指定座位周围的危险区域座位（用于排斥关系）
+   * @param {string} seatId - 座位ID
+   * @param {number} dangerZone - 危险区域半径
+   * @returns {Array} 危险区域内的座位数组
+   */
+  const getDangerZoneSeats = (seatId, dangerZone = 2) => {
+    const parsed = parseSeatId(seatId)
+
+    return seats.value.filter(seat => {
+      if (seat.groupIndex !== parsed.groupIndex) return false
+      if (seat.id === seatId) return false
+      if (seat.isEmpty) return false
+
+      const distance = getSeatDistance(seatId, seat.id)
+      return distance > 0 && distance < dangerZone
+    })
+  }
+
   return {
     seatConfig,
     seats,
@@ -179,6 +262,11 @@ export function useSeatChart() {
     areDeskmates,
     findDeskmates,
     getAvailableSeats,
-    getEmptySeats
+    getEmptySeats,
+    // 距离与相邻性
+    getSeatDistance,
+    getAdjacentSeats,
+    validateRepulsion,
+    getDangerZoneSeats
   }
 }

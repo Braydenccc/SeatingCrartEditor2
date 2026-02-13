@@ -2,18 +2,21 @@ import { useStudentData } from './useStudentData'
 import { useTagData } from './useTagData'
 import { useSeatChart } from './useSeatChart'
 import { useExportSettings } from './useExportSettings'
+import { useSeatRelation } from './useSeatRelation'
+import { RelationType, RelationStrength } from '../constants/relationTypes.js'
 
 export function useWorkspace() {
   const { students } = useStudentData()
   const { tags } = useTagData()
   const { seatConfig, seats } = useSeatChart()
   const { exportSettings } = useExportSettings()
+  const { relations } = useSeatRelation()
 
   // 保存工作区
   const saveWorkspace = () => {
     try {
       const workspace = {
-        version: '1.0',
+        version: '1.1', // 版本升级
         timestamp: new Date().toISOString(),
         students: students.value.map(s => ({
           id: s.id,
@@ -35,7 +38,16 @@ export function useWorkspace() {
           studentId: s.studentId,
           isEmpty: s.isEmpty
         })),
-        exportSettings: { ...exportSettings.value }
+        exportSettings: { ...exportSettings.value },
+        // 新增：保存联系关系
+        relations: relations.value.map(r => ({
+          id: r.id,
+          studentId1: r.studentId1,
+          studentId2: r.studentId2,
+          relationType: r.relationType,
+          strength: r.strength || 'high',
+          metadata: r.metadata || {}
+        }))
       }
 
       const json = JSON.stringify(workspace, null, 2)
@@ -75,6 +87,26 @@ export function useWorkspace() {
           if (!workspace.version || !workspace.students || !workspace.tags) {
             reject(new Error('工作区文件格式不正确'))
             return
+          }
+
+          // 版本迁移：v1.0 -> v1.1
+          if (workspace.version === '1.0') {
+            // 如果存在旧的 bindings 字段，迁移到 relations
+            if (workspace.bindings && Array.isArray(workspace.bindings)) {
+              workspace.relations = workspace.bindings.map(b => ({
+                id: b.id,
+                studentId1: b.studentId1,
+                studentId2: b.studentId2,
+                relationType: RelationType.ATTRACTION, // 旧绑定都视为吸引
+                strength: RelationStrength.HIGH,
+                metadata: {
+                  allowAdjacent: true,
+                  minDistance: 0
+                }
+              }))
+              delete workspace.bindings
+            }
+            workspace.version = '1.1'
           }
 
           resolve(workspace)

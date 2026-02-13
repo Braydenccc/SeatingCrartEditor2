@@ -1,7 +1,7 @@
 <template>
   <header class="app-header">
     <h1 class="header-text">BraydenSCE V2</h1>
-    <p class="header-subtitle">座位表编辑器</p>
+    <p class="header-subtitle">座位表编辑器 开发版本</p>
   </header>
 </template>
 
@@ -27,7 +27,7 @@
 
 .header-subtitle {
   margin: 0;
-  font-size: 14px;
+  font-size: 30px;
   opacity: 0.9;
   font-weight: 300;
 }

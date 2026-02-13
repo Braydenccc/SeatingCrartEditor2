@@ -52,7 +52,9 @@
       </div>
     </div>
 
-    <button class="delete-zone-btn" @click.stop="handleDelete">删除</button>
+    <button class="delete-zone-btn" :class="{ confirming: isDeletingZone.value }" @click.stop="handleDelete">
+      {{ isDeletingZone.value ? '再次点击确认' : '删除' }}
+    </button>
 
     <!-- 标签选择器 (teleport 到 body 避免被父容器裁剪) -->
     <teleport to="body">
@@ -76,6 +78,8 @@
 
 <script setup>
 import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
+import { useConfirmAction } from '@/composables/useConfirmAction'
+import { useLogger } from '@/composables/useLogger'
 
 const props = defineProps({
   zone: {
@@ -105,6 +109,9 @@ const emit = defineEmits([
   'remove-tag',
   'toggle-visible'
 ])
+
+const { requestConfirm, isConfirming } = useConfirmAction()
+const { warning } = useLogger()
 
 const isEditingName = ref(false)
 const editedName = ref('')
@@ -204,9 +211,18 @@ const removeTag = (tagId) => {
 }
 
 // 删除选区
+const deleteKey = computed(() => `deleteZone-${props.zone.id}`)
+const isDeletingZone = isConfirming(deleteKey.value)
+
 const handleDelete = () => {
-  if (confirm(`确定要删除选区"${props.zone.name}"吗?`)) {
-    emit('delete-zone', props.zone.id)
+  const confirmed = requestConfirm(
+    deleteKey.value,
+    () => emit('delete-zone', props.zone.id),
+    `确定要删除选区"${props.zone.name}"吗？`
+  )
+
+  if (!confirmed) {
+    warning(`请再次点击删除按钮以确认删除选区"${props.zone.name}"`)
   }
 }
 
@@ -383,6 +399,23 @@ onUnmounted(() => {
 
 .delete-zone-btn:hover {
   background: linear-gradient(135deg, #d32f2f 0%, #c62828 100%);
+}
+
+.delete-zone-btn.confirming {
+  background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%) !important;
+  animation: pulse 0.8s ease-in-out infinite;
+  box-shadow: 0 0 0 2px rgba(255, 152, 0, 0.2);
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 2px rgba(255, 152, 0, 0.2);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 4px rgba(255, 152, 0, 0.3);
+  }
 }
 
 .tag-picker {

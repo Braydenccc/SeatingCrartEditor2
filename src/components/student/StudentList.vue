@@ -52,7 +52,7 @@ import EmptyState from '../ui/EmptyState.vue'
 import { useTagData, initializeTags } from '@/composables/useTagData'
 import { useStudentData } from '@/composables/useStudentData'
 import { useZoneData } from '@/composables/useZoneData'
-import { useSeatBinding } from '@/composables/useSeatBinding'
+import { useSeatRelation } from '@/composables/useSeatRelation'
 
 // 初始化数据
 onMounted(() => {
@@ -63,7 +63,7 @@ onMounted(() => {
 const { tags, addTag, editTag, deleteTag } = useTagData()
 const { students, addStudent, setStudentCount, updateStudent, deleteStudent, removeTagFromStudents } = useStudentData()
 const { removeTagFromAllZones } = useZoneData()
-const { cleanupInvalidBindings } = useSeatBinding()
+const { cleanupInvalidRelations } = useSeatRelation()
 
 // 学生人数控制
 const targetStudentCount = ref(0)
@@ -124,9 +124,9 @@ const handleUpdateStudent = (studentId, studentData) => {
 
 const handleDeleteStudent = (studentId) => {
   deleteStudent(studentId)
-  // 清理该学生的绑定关系
+  // 清理该学生的联系关系
   const validStudentIds = students.value.map(s => s.id)
-  cleanupInvalidBindings(validStudentIds)
+  cleanupInvalidRelations(validStudentIds)
   isCountError.value = false
 }
 </script>

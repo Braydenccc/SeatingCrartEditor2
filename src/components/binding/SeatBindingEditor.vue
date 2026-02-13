@@ -23,8 +23,12 @@
               <span class="binding-separator">⇄</span>
               <span class="student-name">{{ getStudentName(binding.studentId2) }}</span>
             </div>
-            <button class="delete-binding-btn" @click="handleDeleteBinding(binding.id)">
-              删除
+            <button
+              class="delete-binding-btn"
+              :class="{ confirming: isDeletingBinding(binding.id).value }"
+              @click="handleDeleteBinding(binding)"
+            >
+              {{ isDeletingBinding(binding.id).value ? '再次点击' : '删除' }}
             </button>
           </div>
         </div>
@@ -76,6 +80,8 @@
 import { ref, computed, watch } from 'vue'
 import { useStudentData } from '@/composables/useStudentData'
 import { useSeatBinding } from '@/composables/useSeatBinding'
+import { useConfirmAction } from '@/composables/useConfirmAction'
+import { useLogger } from '@/composables/useLogger'
 
 const props = defineProps({
   visible: {
@@ -88,6 +94,8 @@ const emit = defineEmits(['close'])
 
 const { students } = useStudentData()
 const { bindings, addBinding, deleteBinding, hasBinding } = useSeatBinding()
+const { requestConfirm, isConfirming } = useConfirmAction()
+const { warning } = useLogger()
 
 const selectedStudent1 = ref(null)
 const selectedStudent2 = ref(null)
@@ -144,9 +152,21 @@ const handleAddBinding = () => {
 }
 
 // 删除绑定
-const handleDeleteBinding = (bindingId) => {
-  if (confirm('确定要删除这个绑定关系吗?')) {
-    deleteBinding(bindingId)
+const getDeletingKey = (bindingId) => `deleteBinding-${bindingId}`
+const isDeletingBinding = (bindingId) => isConfirming(getDeletingKey(bindingId))
+
+const handleDeleteBinding = (binding) => {
+  const student1Name = getStudentName(binding.studentId1)
+  const student2Name = getStudentName(binding.studentId2)
+
+  const confirmed = requestConfirm(
+    getDeletingKey(binding.id),
+    () => deleteBinding(binding.id),
+    `确定要删除"${student1Name}"和"${student2Name}"的绑定关系吗？`
+  )
+
+  if (!confirmed) {
+    warning(`请再次点击删除按钮以确认删除绑定关系`)
   }
 }
 
@@ -304,6 +324,23 @@ const close = () => {
 
 .delete-binding-btn:hover {
   background: linear-gradient(135deg, #d32f2f 0%, #c62828 100%);
+}
+
+.delete-binding-btn.confirming {
+  background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%) !important;
+  animation: pulse 0.8s ease-in-out infinite;
+  box-shadow: 0 0 0 2px rgba(255, 152, 0, 0.2);
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 2px rgba(255, 152, 0, 0.2);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 4px rgba(255, 152, 0, 0.3);
+  }
 }
 
 .add-binding-form {
