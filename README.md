@@ -1,8 +1,8 @@
 # 一个跨平台的座位表编辑器，尚在开发
 
-https://sce.rth1.xyz/
+<https://sce.rth1.xyz/>
 
-发布者：Braydenccc or Jbyccc 
+发布者：Braydenccc or Jbyccc
 
 ## 目前已实现的功能
 
