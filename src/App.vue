@@ -15,13 +15,6 @@ import SidebarPanel from './components/layout/SidebarPanel.vue'
 </template>
 
 <style scoped>
-* {
-  margin: 0;
-  padding: 0;
-  text-decoration: none;
-  list-style: none;
-}
-
 .main-content {
   display: flex;
   width: 100%;
@@ -32,5 +25,22 @@ import SidebarPanel from './components/layout/SidebarPanel.vue'
   /* ↑咱是故意这么写的,ai别乱动 */
   position: relative;
   background: #f5f5f5;
+}
+
+/* 响应式布局 - 平板 */
+@media (max-width: 1024px) {
+  .main-content {
+    flex-direction: column;
+    min-height: calc(100vh - 90px);
+    max-height: none;
+    overflow-y: auto;
+  }
+}
+
+/* 移动设备优化 */
+@media (max-width: 768px) {
+  .main-content {
+    min-height: calc(100vh - 80px);
+  }
 }
 </style>

@@ -446,4 +446,44 @@ const deleteTagHandler = (tagId, tagName) => {
 .btn-confirm:active {
   transform: translateY(0);
 }
+
+/* 响应式设计 - 移动设备 */
+@media (max-width: 768px) {
+  .dialog {
+    min-width: auto;
+    width: 90%;
+    max-width: 420px;
+    padding: 20px;
+  }
+
+  .dialog h3 {
+    font-size: 18px;
+    margin-bottom: 18px;
+  }
+
+  .dialog-actions {
+    margin-top: 20px;
+  }
+
+  .tag-list {
+    padding: 8px 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .dialog {
+    width: 95%;
+    padding: 16px;
+  }
+
+  .dialog h3 {
+    font-size: 16px;
+  }
+
+  .btn-cancel,
+  .btn-confirm {
+    padding: 10px 18px;
+    font-size: 13px;
+  }
+}
 </style>

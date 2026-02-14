@@ -11,3 +11,36 @@ a,
   transition: 0.4s;
   padding: 3px;
 }
+
+/* 全局响应式优化 */
+* {
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+}
+
+/* 确保在移动设备上有更好的触摸体验 */
+@media (max-width: 768px) {
+  body {
+    font-size: 14px;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* 移动设备上的按钮和交互元素有更大的触摸区域 */
+  button,
+  input[type="button"],
+  input[type="submit"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* 优化滚动性能 */
+  * {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* 超小屏幕优化 */
+@media (max-width: 480px) {
+  body {
+    font-size: 13px;
+  }
+}

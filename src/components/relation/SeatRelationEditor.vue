@@ -747,4 +747,83 @@ const close = () => {
 .btn-secondary:hover {
   background: #e0e0e0;
 }
+
+/* 响应式设计 - 移动设备 */
+@media (max-width: 768px) {
+  .modal-container {
+    width: 95%;
+    max-height: 90vh;
+  }
+
+  .modal-header {
+    padding: 16px 18px;
+  }
+
+  .modal-header h3 {
+    font-size: 18px;
+  }
+
+  .modal-body {
+    padding: 16px 18px;
+  }
+
+  .form-row {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .relation-type-selector {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .student-select {
+    width: 100%;
+  }
+
+  .option-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .strength-selector {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .relation-item {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .relation-students {
+    width: 100%;
+  }
+
+  .relation-info {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .modal-header h3 {
+    font-size: 16px;
+  }
+
+  .modal-body h4 {
+    font-size: 14px;
+  }
+
+  .radio-label {
+    padding: 6px 10px;
+  }
+
+  .strength-option {
+    padding: 5px 10px;
+    font-size: 12px;
+  }
+}
 </style>

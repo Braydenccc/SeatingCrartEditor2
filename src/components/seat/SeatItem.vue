@@ -274,4 +274,38 @@ const handleClick = () => {
     font-size: 13px;
   }
 }
+
+@media (max-width: 768px) {
+  .seat-item {
+    height: 70px;
+  }
+
+  .student-name {
+    font-size: 12px;
+  }
+
+  .student-number {
+    font-size: 11px;
+    padding: 2px 6px;
+  }
+
+  .empty-text,
+  .seat-placeholder {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 480px) {
+  .seat-item {
+    height: 65px;
+  }
+
+  .student-name {
+    font-size: 11px;
+  }
+
+  .student-number {
+    font-size: 10px;
+  }
+}
 </style>

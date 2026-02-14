@@ -183,7 +183,7 @@ const handleSwapSeat = (seatId) => {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  width: 200px;
+  width: 120px;
 }
 
 /* 滚动条样式 */
@@ -231,6 +231,7 @@ const handleSwapSeat = (seatId) => {
 @media (max-width: 1400px) {
   .seat-chart {
     gap: 30px;
+    padding: 25px 15px;
   }
 
   .group-content {
@@ -238,7 +239,7 @@ const handleSwapSeat = (seatId) => {
   }
 
   .seat-column {
-    width: 80px;
+    width: 100px;
     gap: 10px;
   }
 }
@@ -246,6 +247,7 @@ const handleSwapSeat = (seatId) => {
 @media (max-width: 1200px) {
   .seat-chart {
     gap: 20px;
+    padding: 20px 10px;
   }
 
   .group-content {
@@ -253,8 +255,77 @@ const handleSwapSeat = (seatId) => {
   }
 
   .seat-column {
-    width: 70px;
+    width: 80px;
     gap: 8px;
+  }
+
+  .group-label {
+    font-size: 14px;
+    padding: 6px 10px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .seat-chart {
+    gap: 18px;
+    padding: 15px 10px;
+  }
+
+  .seat-column {
+    width: 65px;
+  }
+}
+
+@media (max-width: 768px) {
+  .seat-chart-info {
+    flex-wrap: wrap;
+    justify-content: center;
+    padding: 10px 15px;
+    font-size: 12px;
+    gap: 4px;
+  }
+
+  .seat-chart {
+    gap: 15px;
+    padding: 15px 5px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+
+  .seat-group {
+    gap: 8px;
+  }
+
+  .group-label {
+    font-size: 13px;
+    padding: 5px 8px;
+  }
+
+  .group-content {
+    gap: 8px;
+  }
+
+  .seat-column {
+    width: 60px;
+    gap: 6px;
+  }
+}
+
+@media (max-width: 480px) {
+  .seat-chart-info {
+    font-size: 11px;
+  }
+
+  .seat-chart {
+    gap: 12px;
+  }
+
+  .seat-column {
+    width: 55px;
+  }
+
+  .group-label {
+    font-size: 12px;
   }
 }
 </style>

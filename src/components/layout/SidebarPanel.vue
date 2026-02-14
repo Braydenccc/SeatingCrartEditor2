@@ -2,238 +2,174 @@
   <div class="sidebar-panel">
     <div class="sidebar-main">
       <div class="tabs-bar">
-        <button
-          v-for="tab in tabs"
-          :key="tab.id"
-          class="tab-button"
-          :class="{ active: activeTab === tab.id }"
-          @click="setActiveTab(tab.id)"
-        >
-        <span class="tab-label">{{ tab.label }}</span>
-      </button>
-    </div>
-    <div class="options-bar">
-      <!-- 文件管理 -->
-      <div class="option-content" :class="{ active: activeTab === 1 }">
-        <div class="tab-header">
-          <h3>工作区管理</h3>
-        </div>
-        <div class="options-group">
-          <input
-            ref="workspaceInput"
-            type="file"
-            accept=".bydsce.json"
-            style="display: none"
-            @change="handleLoadWorkspace"
-          />
-          <button class="option-button" @click="$refs.workspaceInput.click()">
-            <span>加载工作区</span>
-          </button>
-          <button class="option-button" @click="handleSaveWorkspace">
-            <span>保存工作区</span>
-          </button>
-        </div>
-
-        <div class="tab-header">
-          <h3>Excel导入导出</h3>
-        </div>
-        <div class="options-group">
-          <button class="option-button" @click="handleDownloadTemplate">
-            <span>下载空白模板</span>
-          </button>
-          <input
-            ref="excelInput"
-            type="file"
-            accept=".xlsx,.xls"
-            style="display: none"
-            @change="handleImportExcel"
-          />
-          <button class="option-button" @click="$refs.excelInput.click()">
-            <span>从Excel导入</span>
-          </button>
-          <button class="option-button" @click="handleExportExcel">
-            <span>导出到Excel</span>
-          </button>
-        </div>
+        <button v-for="tab in tabs" :key="tab.id" class="tab-button" :class="{ active: activeTab === tab.id }"
+          @click="setActiveTab(tab.id)">
+          <span class="tab-label">{{ tab.label }}</span>
+        </button>
       </div>
-
-      <!-- 对座位进行局部编辑 -->
-      <div class="option-content" :class="{ active: activeTab === 2 }">
-        <div class="tab-header">
-          <h3>座位表配置</h3>
-        </div>
-        <div class="options-group">
-          <div class="input-group">
-            <label for="groupCount">大组数量:</label>
-            <input
-              id="groupCount"
-              v-model.number="configForm.groupCount"
-              type="number"
-              min="1"
-              max="10"
-            />
+      <div class="options-bar">
+        <!-- 文件管理 -->
+        <div class="option-content" :class="{ active: activeTab === 1 }">
+          <div class="tab-header">
+            <h3>工作区管理</h3>
           </div>
-          <div class="input-group">
-            <label for="columnsPerGroup">每组列数:</label>
-            <input
-              id="columnsPerGroup"
-              v-model.number="configForm.columnsPerGroup"
-              type="number"
-              min="1"
-              max="5"
-            />
+          <div class="options-group">
+            <input ref="workspaceInput" type="file" accept=".bydsce.json" style="display: none"
+              @change="handleLoadWorkspace" />
+            <button class="option-button" @click="$refs.workspaceInput.click()">
+              <span>加载工作区</span>
+            </button>
+            <button class="option-button" @click="handleSaveWorkspace">
+              <span>保存工作区</span>
+            </button>
           </div>
-          <div class="input-group">
-            <label for="seatsPerColumn">每列座位数:</label>
-            <input
-              id="seatsPerColumn"
-              v-model.number="configForm.seatsPerColumn"
-              type="number"
-              min="1"
-              max="10"
-            />
+
+          <div class="tab-header">
+            <h3>Excel导入导出</h3>
           </div>
-          <button class="option-button primary" @click="applyConfig">
-            <span>应用配置</span>
-          </button>
-        </div>
-
-        <div class="tab-header">
-          <h3>座位编辑</h3>
-        </div>
-        <div class="options-group">
-          <button
-            id="swapSeat"
-            class="option-button"
-            :class="{ active: currentMode === EditMode.SWAP }"
-            @click="toggleSwapMode"
-          >
-            <span>交换座位</span>
-          </button>
-          <button
-            id="clearSeat"
-            class="option-button"
-            :class="{ active: currentMode === EditMode.CLEAR }"
-            @click="toggleClearMode"
-          >
-            <span>清空座位</span>
-          </button>
-          <button
-            id="emptySeat"
-            class="option-button"
-            :class="{ active: currentMode === EditMode.EMPTY_EDIT }"
-            @click="toggleEmptyEditMode"
-          >
-            <span>空置座位</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- 自动调位、随机排位、座位选区、座位绑定 -->
-      <div class="option-content" :class="{ active: activeTab === 3 }">
-        <div class="tab-header">
-          <h3>智能排位</h3>
-        </div>
-
-        <!-- 选区列表 -->
-        <ZoneList />
-
-        <div class="options-group">
-          <label class="checkbox-label">
-            <input type="checkbox" v-model="useRelations" />
-            <span>使用座位联系</span>
-          </label>
-          <button class="option-button primary" @click="showRelationEditor = true">
-            <span>座位联系编辑</span>
-          </button>
-        </div>
-
-        <div class="options-group">
-          <button
-            id="applyAssign"
-            class="option-button primary"
-            :disabled="isAssigning"
-            @click="handleRunAssignment"
-          >
-            <span>{{ isAssigning ? '排位中...' : '运行排位' }}</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- 导出座位表图片 -->
-      <div class="option-content" :class="{ active: activeTab === 4 }">
-        <div class="tab-header">
-          <h3>基础设置</h3>
-        </div>
-        <div class="options-group">
-          <div class="input-group">
-            <label for="exportTitle">标题:</label>
-            <input
-              id="exportTitle"
-              v-model="exportSettings.title"
-              type="text"
-              placeholder="班级座位表"
-            />
+          <div class="options-group">
+            <button class="option-button" @click="handleDownloadTemplate">
+              <span>下载空白模板</span>
+            </button>
+            <input ref="excelInput" type="file" accept=".xlsx,.xls" style="display: none" @change="handleImportExcel" />
+            <button class="option-button" @click="$refs.excelInput.click()">
+              <span>从Excel导入</span>
+            </button>
+            <button class="option-button" @click="handleExportExcel">
+              <span>导出到Excel</span>
+            </button>
           </div>
-          <label class="checkbox-label">
-            <input type="checkbox" v-model="exportSettings.showTitle" />
-            <span>显示标题</span>
-          </label>
-          <label class="checkbox-label">
-            <input type="checkbox" v-model="exportSettings.showRowNumbers" />
-            <span>显示行号</span>
-          </label>
-          <label class="checkbox-label">
-            <input type="checkbox" v-model="exportSettings.showGroupLabels" />
-            <span>显示组号</span>
-          </label>
-          <label class="checkbox-label">
-            <input type="checkbox" v-model="exportSettings.showPodium" />
-            <span>显示讲台</span>
-          </label>
         </div>
 
-        <div class="tab-header">
-          <h3>标签设置</h3>
-        </div>
-        <div class="options-group">
-          <label class="checkbox-label">
-            <input type="checkbox" v-model="exportSettings.enableTagLabels" />
-            <span>启用标签显示</span>
-          </label>
+        <!-- 对座位进行局部编辑 -->
+        <div class="option-content" :class="{ active: activeTab === 2 }">
+          <div class="tab-header">
+            <h3>座位表配置</h3>
+          </div>
+          <div class="options-group">
+            <div class="input-group">
+              <label for="groupCount">大组数量:</label>
+              <input id="groupCount" v-model.number="configForm.groupCount" type="number" min="1" max="10" />
+            </div>
+            <div class="input-group">
+              <label for="columnsPerGroup">每组列数:</label>
+              <input id="columnsPerGroup" v-model.number="configForm.columnsPerGroup" type="number" min="1" max="5" />
+            </div>
+            <div class="input-group">
+              <label for="seatsPerColumn">每列座位数:</label>
+              <input id="seatsPerColumn" v-model.number="configForm.seatsPerColumn" type="number" min="1" max="10" />
+            </div>
+            <button class="option-button primary" @click="applyConfig">
+              <span>应用配置</span>
+            </button>
+          </div>
 
-          <div v-if="exportSettings.enableTagLabels && tags.length > 0 && Object.keys(tagSettingsLocal).length > 0" class="tag-settings-list">
-            <div v-for="tag in tags" :key="tag.id" class="tag-setting-item">
-              <label class="tag-checkbox" v-if="tagSettingsLocal[tag.id]">
-                <input
-                  type="checkbox"
-                  v-model="tagSettingsLocal[tag.id].enabled"
-                  @change="updateTagSettings()"
-                />
-                <span class="tag-color-dot" :style="{ backgroundColor: tag.color }"></span>
-                <span>{{ tag.name }}</span>
-              </label>
-              <div v-if="tagSettingsLocal[tag.id] && tagSettingsLocal[tag.id].enabled">
-              <p class="tag-display-text-label">导出时标签名称</p>
-              <input
-                type="text"
-                v-model="tagSettingsLocal[tag.id].displayText"
-                @blur="updateTagSettings()"
-                class="tag-text-input"
-                placeholder="显示文本"
-                maxlength="4"
-              /></div>
+          <div class="tab-header">
+            <h3>座位编辑</h3>
+          </div>
+          <div class="options-group">
+            <button id="swapSeat" class="option-button" :class="{ active: currentMode === EditMode.SWAP }"
+              @click="toggleSwapMode">
+              <span>交换座位</span>
+            </button>
+            <button id="clearSeat" class="option-button" :class="{ active: currentMode === EditMode.CLEAR }"
+              @click="toggleClearMode">
+              <span>清空座位</span>
+            </button>
+            <button id="emptySeat" class="option-button" :class="{ active: currentMode === EditMode.EMPTY_EDIT }"
+              @click="toggleEmptyEditMode">
+              <span>空置座位</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 自动调位、随机排位、座位选区、座位绑定 -->
+        <div class="option-content" :class="{ active: activeTab === 3 }">
+          <div class="tab-header">
+            <h3>智能排位</h3>
+          </div>
+
+          <!-- 选区列表 -->
+          <ZoneList />
+
+          <div class="options-group">
+            <label class="checkbox-label">
+              <input type="checkbox" v-model="useRelations" />
+              <span>使用座位联系</span>
+            </label>
+            <button class="option-button primary" @click="showRelationEditor = true">
+              <span>座位联系编辑</span>
+            </button>
+          </div>
+
+          <div class="options-group">
+            <button id="applyAssign" class="option-button primary" :disabled="isAssigning" @click="handleRunAssignment">
+              <span>{{ isAssigning ? '排位中...' : '运行排位' }}</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 导出座位表图片 -->
+        <div class="option-content" :class="{ active: activeTab === 4 }">
+          <div class="tab-header">
+            <h3>基础设置</h3>
+          </div>
+          <div class="options-group">
+            <div class="input-group">
+              <label for="exportTitle">标题:</label>
+              <input id="exportTitle" v-model="exportSettings.title" type="text" placeholder="班级座位表" />
+            </div>
+            <label class="checkbox-label">
+              <input type="checkbox" v-model="exportSettings.showTitle" />
+              <span>显示标题</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" v-model="exportSettings.showRowNumbers" />
+              <span>显示行号</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" v-model="exportSettings.showGroupLabels" />
+              <span>显示组号</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" v-model="exportSettings.showPodium" />
+              <span>显示讲台</span>
+            </label>
+          </div>
+
+          <div class="tab-header">
+            <h3>标签设置</h3>
+          </div>
+          <div class="options-group">
+            <label class="checkbox-label">
+              <input type="checkbox" v-model="exportSettings.enableTagLabels" />
+              <span>启用标签显示</span>
+            </label>
+
+            <div v-if="exportSettings.enableTagLabels && tags.length > 0 && Object.keys(tagSettingsLocal).length > 0"
+              class="tag-settings-list">
+              <div v-for="tag in tags" :key="tag.id" class="tag-setting-item">
+                <label class="tag-checkbox" v-if="tagSettingsLocal[tag.id]">
+                  <input type="checkbox" v-model="tagSettingsLocal[tag.id].enabled" @change="updateTagSettings()" />
+                  <span class="tag-color-dot" :style="{ backgroundColor: tag.color }"></span>
+                  <span>{{ tag.name }}</span>
+                </label>
+                <div v-if="tagSettingsLocal[tag.id] && tagSettingsLocal[tag.id].enabled">
+                  <p class="tag-display-text-label">导出时标签名称</p>
+                  <input type="text" v-model="tagSettingsLocal[tag.id].displayText" @blur="updateTagSettings()"
+                    class="tag-text-input" placeholder="显示文本" maxlength="4" />
+                </div>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div class="options-group">
-          <button class="option-button primary" @click="handleExportImage">
-            <span>导出为图片</span>
-          </button>
+          <div class="options-group">
+            <button class="option-button primary" @click="handleExportImage">
+              <span>导出为图片</span>
+            </button>
+          </div>
         </div>
       </div>
-    </div>
     </div>
 
     <!-- 日志区域 -->
@@ -245,12 +181,7 @@
         </button>
       </div>
       <div class="log-list">
-        <div
-          v-for="log in logs"
-          :key="log.id"
-          class="log-item"
-          :class="`log-${log.type}`"
-        >
+        <div v-for="log in logs" :key="log.id" class="log-item" :class="`log-${log.type}`">
           <span class="log-time">{{ formatLogTime(log.timestamp) }}</span>
           <span class="log-message">{{ log.message }}</span>
         </div>
@@ -262,10 +193,7 @@
   </div>
 
   <!-- 座位联系编辑器模态框 -->
-  <SeatRelationEditor
-    :visible="showRelationEditor"
-    @close="showRelationEditor = false"
-  />
+  <SeatRelationEditor :visible="showRelationEditor" @close="showRelationEditor = false" />
 </template>
 
 <script setup>
@@ -630,10 +558,35 @@ const formatLogTime = (timestamp) => {
   box-shadow: -2px 0 8px rgba(0, 0, 0, 0.05);
 }
 
+/* 响应式设计 - 中等屏幕 */
+@media (max-width: 1400px) {
+  .sidebar-panel {
+    width: 25%;
+  }
+}
+
+/* 响应式设计 - 平板 */
+@media (max-width: 1024px) {
+  .sidebar-panel {
+    width: 100%;
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
+  }
+}
+
 .sidebar-main {
   flex: 1;
   display: flex;
   overflow: hidden;
+}
+
+/* 响应式设计 - 平板和移动设备 */
+@media (max-width: 1024px) {
+  .sidebar-main {
+    flex-direction: column;
+    min-height: 400px;
+    max-height: 600px;
+    overflow-y: auto;
+  }
 }
 
 .tabs-bar {
@@ -645,6 +598,17 @@ const formatLogTime = (timestamp) => {
   height: 100%;
   background: linear-gradient(180deg, #e8eef2 0%, #dce4e9 100%);
   border-right: 1px solid #d0d7dc;
+}
+
+/* 响应式设计 - 平板和移动设备 */
+@media (max-width: 1024px) {
+  .tabs-bar {
+    width: 100%;
+    height: auto;
+    flex-direction: row;
+    border-right: none;
+    border-bottom: 1px solid #d0d7dc;
+  }
 }
 
 .tab-button {
@@ -666,6 +630,37 @@ const formatLogTime = (timestamp) => {
   position: relative;
 }
 
+/* 响应式设计 - 平板和移动设备 */
+@media (max-width: 1024px) {
+  .tab-button {
+    flex: 1;
+    height: 60px;
+    border-bottom: none;
+    border-right: 1px solid #d0d7dc;
+    font-size: 14px;
+  }
+
+  .tab-button:last-child {
+    border-right: none;
+  }
+}
+
+/* 响应式设计 - 移动设备 */
+@media (max-width: 768px) {
+  .tab-button {
+    height: 50px;
+    font-size: 13px;
+    gap: 4px;
+  }
+}
+
+@media (max-width: 480px) {
+  .tab-button {
+    font-size: 12px;
+    padding: 5px;
+  }
+}
+
 .tab-button::before {
   content: '';
   position: absolute;
@@ -677,6 +672,25 @@ const formatLogTime = (timestamp) => {
   background: #23587b;
   border-radius: 0 2px 2px 0;
   transition: height 0.3s ease;
+}
+
+/* 响应式设计 - 平板和移动设备 */
+@media (max-width: 1024px) {
+  .tab-button::before {
+    left: 50%;
+    top: auto;
+    bottom: 0;
+    transform: translateX(-50%);
+    width: 0;
+    height: 3px;
+    border-radius: 2px 2px 0 0;
+    transition: width 0.3s ease;
+  }
+
+  .tab-button.active::before {
+    width: 60%;
+    height: 3px;
+  }
 }
 
 .tab-button:hover {
@@ -702,6 +716,13 @@ const formatLogTime = (timestamp) => {
   width: 80%;
   background: #ffffff;
   overflow-y: auto;
+}
+
+/* 响应式设计 - 平板和移动设备 */
+@media (max-width: 1024px) {
+  .options-bar {
+    width: 100%;
+  }
 }
 
 .options-bar::-webkit-scrollbar {
@@ -730,6 +751,13 @@ const formatLogTime = (timestamp) => {
 
 .option-content.active {
   display: flex;
+}
+
+/* 响应式设计 - 移动设备 */
+@media (max-width: 768px) {
+  .option-content {
+    padding: 15px;
+  }
 }
 
 .tab-header {
@@ -816,10 +844,13 @@ const formatLogTime = (timestamp) => {
 }
 
 @keyframes pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: scale(1);
     box-shadow: 0 0 0 3px rgba(255, 152, 0, 0.2);
   }
+
   50% {
     transform: scale(1.05);
     box-shadow: 0 0 0 6px rgba(255, 152, 0, 0.3);
@@ -963,6 +994,15 @@ const formatLogTime = (timestamp) => {
   max-height: 200px;
 }
 
+/* 响应式设计 - 移动设备 */
+@media (max-width: 768px) {
+  .log-area {
+    height: 150px;
+    min-height: 150px;
+    max-height: 150px;
+  }
+}
+
 .log-header {
   display: flex;
   justify-content: space-between;
@@ -1050,5 +1090,4 @@ const formatLogTime = (timestamp) => {
   padding: 20px;
   font-size: 13px;
 }
-
 </style>

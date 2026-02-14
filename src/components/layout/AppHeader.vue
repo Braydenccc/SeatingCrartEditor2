@@ -36,4 +36,51 @@
   color: #f0f0f0;
   text-decoration: underline;
 }
+
+/* 响应式设计 - 平板 */
+@media (max-width: 1024px) {
+  .app-header {
+    padding: 0 20px;
+    height: 90px;
+  }
+
+  .header-text {
+    font-size: 28px;
+  }
+
+  .header-subtitle {
+    font-size: 16px;
+  }
+}
+
+/* 响应式设计 - 移动设备 */
+@media (max-width: 768px) {
+  .app-header {
+    flex-direction: column;
+    justify-content: center;
+    gap: 8px;
+    height: 80px;
+    padding: 10px 15px;
+  }
+
+  .header-text {
+    font-size: 22px;
+  }
+
+  .header-subtitle {
+    font-size: 12px;
+    text-align: center;
+  }
+}
+
+/* 超小屏幕优化 */
+@media (max-width: 480px) {
+  .header-text {
+    font-size: 18px;
+  }
+
+  .header-subtitle {
+    font-size: 10px;
+  }
+}
 </style>

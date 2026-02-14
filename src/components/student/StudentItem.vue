@@ -584,4 +584,54 @@ const deleteHandler = () => {
   color: #999;
   font-size: 14px;
 }
+
+/* 响应式设计 - 移动设备 */
+@media (max-width: 768px) {
+  .student-item {
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px 15px;
+  }
+
+  .student-info {
+    width: 100%;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .student-number-section {
+    width: 100%;
+  }
+
+  .student-name-section {
+    width: 100%;
+  }
+
+  .student-actions {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .delete-student-btn {
+    width: 100%;
+    padding: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .student-number {
+    font-size: 14px;
+    padding: 5px 10px;
+  }
+
+  .student-name {
+    font-size: 15px;
+  }
+
+  .student-tag {
+    font-size: 11px;
+    padding: 3px 7px;
+  }
+}
 </style>
