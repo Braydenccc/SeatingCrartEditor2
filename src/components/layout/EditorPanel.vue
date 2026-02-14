@@ -51,13 +51,14 @@ import SeatChart from '../seat/SeatChart.vue'
   }
 
   .editor {
-    min-height: 400px;
-    height: 50%;
+    flex: 3;
+    min-height: 300px;
   }
 
   .student-list-area {
-    height: 50%;
-    min-height: 350px;
+    flex: 2;
+    min-height: 250px;
+    height: auto;
   }
 }
 
@@ -68,13 +69,27 @@ import SeatChart from '../seat/SeatChart.vue'
   }
 
   .editor {
-    min-height: 350px;
-    height: auto;
+    flex: none;
+    min-height: 280px;
+    height: 45vh;
   }
 
   .student-list-area {
-    min-height: 300px;
+    flex: none;
+    min-height: 250px;
     height: auto;
+  }
+}
+
+/* 超小屏幕 */
+@media (max-width: 480px) {
+  .editor {
+    min-height: 220px;
+    height: 40vh;
+  }
+
+  .student-list-area {
+    min-height: 200px;
   }
 }
 </style>

@@ -583,8 +583,8 @@ const formatLogTime = (timestamp) => {
 @media (max-width: 1024px) {
   .sidebar-main {
     flex-direction: column;
-    min-height: 400px;
-    max-height: 600px;
+    flex: 1;
+    min-height: 300px;
     overflow-y: auto;
   }
 }
@@ -712,6 +712,18 @@ const formatLogTime = (timestamp) => {
   font-size: 15px;
 }
 
+@media (max-width: 768px) {
+  .tab-label {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+  .tab-label {
+    font-size: 12px;
+  }
+}
+
 .options-bar {
   width: 80%;
   background: #ffffff;
@@ -757,6 +769,51 @@ const formatLogTime = (timestamp) => {
 @media (max-width: 768px) {
   .option-content {
     padding: 15px;
+  }
+
+  .tab-header h3 {
+    font-size: 16px;
+  }
+
+  .option-button {
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+
+  .options-group {
+    gap: 10px;
+    margin-bottom: 18px;
+    padding-bottom: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .option-content {
+    padding: 12px;
+  }
+
+  .tab-header h3 {
+    font-size: 15px;
+  }
+
+  .option-button {
+    padding: 9px 12px;
+    font-size: 12px;
+  }
+
+  .input-group label {
+    font-size: 12px;
+  }
+
+  .input-group input[type="number"],
+  .input-group input[type="text"] {
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+
+  .checkbox-label {
+    padding: 8px 10px;
+    font-size: 13px;
   }
 }
 

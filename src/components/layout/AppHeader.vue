@@ -50,6 +50,10 @@
 
   .header-subtitle {
     font-size: 16px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 60%;
   }
 }
 
@@ -70,17 +74,28 @@
   .header-subtitle {
     font-size: 12px;
     text-align: center;
+    white-space: normal;
+    overflow: visible;
+    max-width: 100%;
+    line-height: 1.4;
   }
 }
 
 /* 超小屏幕优化 */
 @media (max-width: 480px) {
+  .app-header {
+    height: auto;
+    min-height: 60px;
+    padding: 8px 12px;
+  }
+
   .header-text {
     font-size: 18px;
   }
 
   .header-subtitle {
     font-size: 10px;
+    line-height: 1.3;
   }
 }
 </style>

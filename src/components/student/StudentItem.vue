@@ -1,60 +1,28 @@
 <template>
-  <div
-    class="student-item"
-    :class="{ selected: isSelected }"
-    @click="handleSelectStudent"
-  >
+  <div class="student-item" :class="{ selected: isSelected, dragging: isStudentDragging }" :data-student-id="student.id"
+    :draggable="canDrag" @click="handleSelectStudent" @dragstart="handleDragStart" @dragend="handleDragEnd"
+    @touchstart="handleTouchDragStart" @touchmove="handleTouchDragMove" @touchend="handleTouchDragEnd">
     <div class="student-info">
       <div class="student-number-section">
-        <input
-          v-if="isEditingNumber"
-          v-model.number="editStudentNumber"
-          type="number"
-          min="1"
-          class="student-number-input"
-          @blur="saveStudentNumber"
-          @keyup.enter="saveStudentNumber"
-          ref="numberInput"
-          placeholder="学号"
-        />
-        <span
-          v-else
-          class="student-number"
-          :class="{ empty: !student.studentNumber }"
-          @dblclick="startEditNumber"
-        >
+        <input v-if="isEditingNumber" v-model.number="editStudentNumber" type="number" min="1"
+          class="student-number-input" @blur="saveStudentNumber" @keyup.enter="saveStudentNumber" ref="numberInput"
+          placeholder="学号" />
+        <span v-else class="student-number" :class="{ empty: !student.studentNumber }" @dblclick="startEditNumber">
           {{ student.studentNumber || '未设置' }}
         </span>
       </div>
 
       <div class="student-name-section">
-        <input
-          v-if="isEditingName"
-          v-model="editName"
-          type="text"
-          class="student-name-input"
-          @blur="saveName"
-          @keyup.enter="saveName"
-          ref="nameInput"
-          placeholder="姓名"
-        />
-        <span
-          v-else
-          class="student-name"
-          :class="{ empty: !student.name }"
-          @dblclick="startEditName"
-        >
+        <input v-if="isEditingName" v-model="editName" type="text" class="student-name-input" @blur="saveName"
+          @keyup.enter="saveName" ref="nameInput" placeholder="姓名" />
+        <span v-else class="student-name" :class="{ empty: !student.name }" @dblclick="startEditName">
           {{ student.name || '未命名' }}
         </span>
       </div>
 
       <div class="student-tags">
-        <span
-          v-for="tagId in student.tags"
-          :key="tagId"
-          class="student-tag"
-          :style="{ background: getTagColor(tagId) }"
-        >
+        <span v-for="tagId in student.tags" :key="tagId" class="student-tag"
+          :style="{ background: getTagColor(tagId) }">
           {{ getTagName(tagId) }}
           <button class="remove-tag-btn" @click="removeTag(tagId)">×</button>
         </span>
@@ -71,12 +39,7 @@
     <!-- 标签选择器 (teleport 到 body 避免被父容器裁剪) -->
     <teleport to="body">
       <div v-if="showTagPicker" class="tag-picker" ref="tagPickerRef" :style="tagPickerStyle" @click.stop>
-        <div
-          v-for="tag in availableTagsForStudent"
-          :key="tag.id"
-          class="tag-option"
-          @click="addTagToStudent(tag.id)"
-        >
+        <div v-for="tag in availableTagsForStudent" :key="tag.id" class="tag-option" @click="addTagToStudent(tag.id)">
           <span class="tag-dot" :style="{ background: tag.color }"></span>
           <span>{{ tag.name }}</span>
         </div>
@@ -93,6 +56,7 @@ import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
 import { useStudentData } from '@/composables/useStudentData'
 import { useConfirmAction } from '@/composables/useConfirmAction'
 import { useLogger } from '@/composables/useLogger'
+import { useEditMode } from '@/composables/useEditMode'
 
 const props = defineProps({
   student: {
@@ -111,6 +75,117 @@ const emit = defineEmits(['update-student', 'delete-student'])
 const { selectedStudentId, selectStudent } = useStudentData()
 const { requestConfirm, isConfirming } = useConfirmAction()
 const { warning } = useLogger()
+const { currentMode, EditMode } = useEditMode()
+
+// ==================== 拖拽功能 ====================
+const isStudentDragging = ref(false)
+let touchDragTimer = null
+let touchDragActive = false
+let touchPreviewEl = null
+
+const canDrag = computed(() => {
+  return currentMode.value === EditMode.NORMAL
+})
+
+const handleDragStart = (e) => {
+  if (!canDrag.value) {
+    e.preventDefault()
+    return
+  }
+  isStudentDragging.value = true
+  e.dataTransfer.effectAllowed = 'move'
+  e.dataTransfer.setData('application/json', JSON.stringify({
+    type: 'student',
+    studentId: props.student.id
+  }))
+}
+
+const handleDragEnd = () => {
+  isStudentDragging.value = false
+}
+
+// 触摸拖拽
+const handleTouchDragStart = (e) => {
+  if (e.touches.length !== 1 || !canDrag.value) return
+  const touch = e.touches[0]
+  const startX = touch.clientX
+  const startY = touch.clientY
+
+  touchDragTimer = setTimeout(() => {
+    touchDragActive = true
+    isStudentDragging.value = true
+
+    touchPreviewEl = document.createElement('div')
+    touchPreviewEl.className = 'touch-drag-preview'
+    touchPreviewEl.textContent = props.student.name || '未命名'
+    touchPreviewEl.style.cssText = `
+      position: fixed;
+      left: ${startX - 40}px;
+      top: ${startY - 25}px;
+      min-width: 80px;
+      padding: 8px 16px;
+      background: rgba(35, 88, 123, 0.9);
+      color: white;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 600;
+      pointer-events: none;
+      z-index: 9999;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    `
+    document.body.appendChild(touchPreviewEl)
+    if (navigator.vibrate) navigator.vibrate(30)
+  }, 300)
+}
+
+const handleTouchDragMove = (e) => {
+  if (!touchDragActive || e.touches.length !== 1) {
+    if (touchDragTimer) { clearTimeout(touchDragTimer); touchDragTimer = null }
+    return
+  }
+  e.preventDefault()
+  const touch = e.touches[0]
+  if (touchPreviewEl) {
+    touchPreviewEl.style.left = `${touch.clientX - 40}px`
+    touchPreviewEl.style.top = `${touch.clientY - 25}px`
+  }
+  // 高亮目标座位
+  const el = document.elementFromPoint(touch.clientX, touch.clientY)
+  document.querySelectorAll('.seat-item.drag-over').forEach(s => s.classList.remove('drag-over'))
+  if (el) {
+    let cur = el
+    while (cur && !cur.dataset?.seatId) cur = cur.parentElement
+    if (cur) cur.classList.add('drag-over')
+  }
+}
+
+const handleTouchDragEnd = (e) => {
+  if (touchDragTimer) { clearTimeout(touchDragTimer); touchDragTimer = null }
+  if (!touchDragActive) return
+
+  const touch = e.changedTouches[0]
+  if (touchPreviewEl) touchPreviewEl.style.display = 'none'
+  const targetEl = document.elementFromPoint(touch.clientX, touch.clientY)
+  if (touchPreviewEl) { touchPreviewEl.remove(); touchPreviewEl = null }
+
+  document.querySelectorAll('.seat-item.drag-over').forEach(s => s.classList.remove('drag-over'))
+  isStudentDragging.value = false
+  touchDragActive = false
+
+  if (!targetEl) return
+  let cur = targetEl
+  while (cur && !cur.dataset?.seatId) cur = cur.parentElement
+  if (!cur) return
+
+  const event = new CustomEvent('touch-student-drop', {
+    bubbles: true,
+    detail: { studentId: props.student.id, targetSeatId: cur.dataset.seatId }
+  })
+  cur.dispatchEvent(event)
+}
 
 const isEditingName = ref(false)
 const isEditingNumber = ref(false)
@@ -512,10 +587,13 @@ const deleteHandler = () => {
 }
 
 @keyframes pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: scale(1);
     box-shadow: 0 0 0 3px rgba(255, 152, 0, 0.2);
   }
+
   50% {
     transform: scale(1.05);
     box-shadow: 0 0 0 6px rgba(255, 152, 0, 0.3);
@@ -633,5 +711,20 @@ const deleteHandler = () => {
     font-size: 11px;
     padding: 3px 7px;
   }
+}
+
+/* 拖拽样式 */
+.student-item[draggable="true"] {
+  cursor: grab;
+}
+
+.student-item[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+.student-item.dragging {
+  opacity: 0.4;
+  transform: scale(0.97);
+  border-style: dashed;
 }
 </style>

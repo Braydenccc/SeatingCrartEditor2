@@ -458,4 +458,50 @@ onUnmounted(() => {
   color: #999;
   font-size: 12px;
 }
+
+/* 响应式设计 - 移动设备 */
+@media (max-width: 768px) {
+  .zone-item {
+    padding: 10px;
+  }
+
+  .zone-name {
+    font-size: 13px;
+  }
+
+  .zone-tag {
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+
+  .zone-info {
+    font-size: 11px;
+  }
+
+  .delete-zone-btn {
+    font-size: 11px;
+    padding: 5px;
+  }
+}
+
+@media (max-width: 480px) {
+  .zone-item {
+    padding: 8px;
+    margin-bottom: 8px;
+  }
+
+  .zone-header {
+    gap: 6px;
+    margin-bottom: 6px;
+  }
+
+  .zone-color-indicator {
+    width: 12px;
+    height: 12px;
+  }
+
+  .zone-visible-checkbox {
+    font-size: 11px;
+  }
+}
 </style>

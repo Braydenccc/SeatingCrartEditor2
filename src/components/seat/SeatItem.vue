@@ -1,16 +1,16 @@
 <template>
-  <div
-    class="seat-item"
-    :class="{
-      empty: seat.isEmpty,
-      occupied: hasStudent,
-      selected: isFirstSelected,
-      clickable: isClickable,
-      'zone-highlight': zoneHighlight
-    }"
-    :style="zoneHighlightStyle"
-    @click="handleClick"
-  >
+  <div class="seat-item" :class="{
+    empty: seat.isEmpty,
+    occupied: hasStudent,
+    selected: isFirstSelected,
+    clickable: isClickable,
+    'zone-highlight': zoneHighlight,
+    'drag-over': isDragOver,
+    dragging: isDragging
+  }" :style="zoneHighlightStyle" :data-seat-id="seat.id" :draggable="isDraggable" @click="handleClick"
+    @dragstart="handleDragStart" @dragend="handleDragEnd" @dragover.prevent="handleDragOverSeat"
+    @dragenter.prevent="handleDragEnter" @dragleave="handleDragLeave" @drop.prevent.stop="handleDrop"
+    @touchstart="handleTouchStart" @touchmove="handleTouchMove" @touchend="handleTouchEnd">
     <div v-if="seat.isEmpty" class="empty-indicator">
       <span class="empty-text">空置</span>
     </div>
@@ -25,7 +25,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useStudentData } from '@/composables/useStudentData'
 import { useEditMode } from '@/composables/useEditMode'
 import { useZoneData } from '@/composables/useZoneData'
@@ -43,23 +43,29 @@ const { students, selectedStudentId } = useStudentData()
 const { currentMode, firstSelectedSeat, EditMode } = useEditMode()
 const { visibleZoneSeats, selectedZoneId, toggleSeatInZone } = useZoneData()
 
-// 是否有学生
+const isDragOver = ref(false)
+const isDragging = ref(false)
+
+// 触摸拖拽状态
+let touchDragTimer = null
+let touchDragActive = false
+let touchPreviewEl = null
+
+// ==================== 计算属性 ====================
+
 const hasStudent = computed(() => {
   return props.seat.studentId !== null && !props.seat.isEmpty
 })
 
-// 获取学生信息
 const studentInfo = computed(() => {
   if (!hasStudent.value) return null
   return students.value.find(s => s.id === props.seat.studentId) || { name: '未知', studentNumber: null }
 })
 
-// 是否是交换模式下第一个选中的座位
 const isFirstSelected = computed(() => {
   return currentMode.value === EditMode.SWAP && firstSelectedSeat.value === props.seat.id
 })
 
-// 选区高亮相关
 const zoneHighlight = computed(() => {
   return visibleZoneSeats.value.has(props.seat.id)
 })
@@ -67,72 +73,240 @@ const zoneHighlight = computed(() => {
 const zoneHighlightStyle = computed(() => {
   if (!zoneHighlight.value) return {}
   const color = visibleZoneSeats.value.get(props.seat.id)
-  return {
-    '--zone-color': color
-  }
+  return { '--zone-color': color }
 })
 
-// 是否可点击
 const isClickable = computed(() => {
-  // 普通模式下,有选中学生且座位未空置时可点击
   if (currentMode.value === EditMode.NORMAL) {
     return selectedStudentId.value !== null && !props.seat.isEmpty
   }
-  // 空置编辑模式下总是可点击
-  if (currentMode.value === EditMode.EMPTY_EDIT) {
-    return true
-  }
-  // 交换模式下总是可点击
-  if (currentMode.value === EditMode.SWAP) {
-    return true
-  }
-  // 清空模式下,有学生的座位可点击
-  if (currentMode.value === EditMode.CLEAR) {
-    return hasStudent.value
-  }
-  // 选区编辑模式下总是可点击
-  if (currentMode.value === EditMode.ZONE_EDIT) {
-    return true
-  }
+  if (currentMode.value === EditMode.EMPTY_EDIT) return true
+  if (currentMode.value === EditMode.SWAP) return true
+  if (currentMode.value === EditMode.CLEAR) return hasStudent.value
+  if (currentMode.value === EditMode.ZONE_EDIT) return true
   return false
 })
 
-// 处理点击
+// 是否可拖拽（有学生且在普通/交换模式下）
+const isDraggable = computed(() => {
+  return hasStudent.value &&
+    (currentMode.value === EditMode.NORMAL || currentMode.value === EditMode.SWAP)
+})
+
+// ==================== 点击处理 ====================
+
 const handleClick = () => {
   if (!isClickable.value) return
 
   switch (currentMode.value) {
     case EditMode.NORMAL:
-      // 普通模式:分配学生
       if (selectedStudentId.value && !props.seat.isEmpty) {
         emit('assign-student', props.seat.id, selectedStudentId.value)
       }
       break
-
     case EditMode.EMPTY_EDIT:
-      // 空置编辑模式:切换空置状态
       emit('toggle-empty', props.seat.id)
       break
-
     case EditMode.SWAP:
-      // 交换模式:选择座位进行交换
       emit('swap-seat', props.seat.id)
       break
-
     case EditMode.CLEAR:
-      // 清空模式:清空座位
       if (hasStudent.value) {
         emit('clear-seat', props.seat.id)
       }
       break
-
     case EditMode.ZONE_EDIT:
-      // 选区编辑模式:切换座位在选区中的状态
       if (selectedZoneId.value) {
         toggleSeatInZone(selectedZoneId.value, props.seat.id)
       }
       break
   }
+}
+
+// ==================== HTML5 拖拽 ====================
+
+const handleDragStart = (e) => {
+  if (!isDraggable.value) {
+    e.preventDefault()
+    return
+  }
+  isDragging.value = true
+  e.dataTransfer.effectAllowed = 'move'
+  e.dataTransfer.setData('application/json', JSON.stringify({
+    type: 'seat',
+    seatId: props.seat.id,
+    studentId: props.seat.studentId
+  }))
+}
+
+const handleDragEnd = () => {
+  isDragging.value = false
+}
+
+const handleDragOverSeat = (e) => {
+  e.dataTransfer.dropEffect = 'move'
+}
+
+const handleDragEnter = () => {
+  if (!props.seat.isEmpty) {
+    isDragOver.value = true
+  }
+}
+
+const handleDragLeave = () => {
+  isDragOver.value = false
+}
+
+const handleDrop = (e) => {
+  isDragOver.value = false
+  const raw = e.dataTransfer.getData('application/json')
+  if (!raw) return
+
+  try {
+    const data = JSON.parse(raw)
+    if (data.type === 'student' && !props.seat.isEmpty) {
+      emit('assign-student', props.seat.id, data.studentId)
+    } else if (data.type === 'seat' && data.seatId !== props.seat.id) {
+      // 通过冒泡的自定义事件通知 SeatChart 做交换
+      const event = new CustomEvent('touch-seat-drop', {
+        bubbles: true,
+        detail: {
+          sourceSeatId: data.seatId,
+          targetSeatId: props.seat.id
+        }
+      })
+      e.target.dispatchEvent(event)
+    }
+  } catch {
+    // ignore
+  }
+}
+
+// ==================== 触摸拖拽模拟 ====================
+
+const handleTouchStart = (e) => {
+  // 仅单指 + 可拖拽时启动长按
+  if (e.touches.length !== 1 || !isDraggable.value) return
+
+  const touch = e.touches[0]
+  const startX = touch.clientX
+  const startY = touch.clientY
+
+  touchDragTimer = setTimeout(() => {
+    touchDragActive = true
+    isDragging.value = true
+
+    // 创建拖拽预览
+    const rect = e.currentTarget.getBoundingClientRect()
+    touchPreviewEl = document.createElement('div')
+    touchPreviewEl.className = 'touch-drag-preview'
+    touchPreviewEl.textContent = studentInfo.value?.name || '未命名'
+    touchPreviewEl.style.cssText = `
+      position: fixed;
+      left: ${startX - rect.width / 2}px;
+      top: ${startY - rect.height / 2}px;
+      width: ${rect.width}px;
+      height: ${rect.height}px;
+      background: rgba(35, 88, 123, 0.9);
+      color: white;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 600;
+      pointer-events: none;
+      z-index: 9999;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+      transition: none;
+    `
+    document.body.appendChild(touchPreviewEl)
+
+    // 触觉反馈
+    if (navigator.vibrate) navigator.vibrate(30)
+  }, 300)
+}
+
+const handleTouchMove = (e) => {
+  if (!touchDragActive || e.touches.length !== 1) {
+    if (touchDragTimer) {
+      clearTimeout(touchDragTimer)
+      touchDragTimer = null
+    }
+    return
+  }
+
+  const touch = e.touches[0]
+  if (touchPreviewEl) {
+    const w = touchPreviewEl.offsetWidth
+    const h = touchPreviewEl.offsetHeight
+    touchPreviewEl.style.left = `${touch.clientX - w / 2}px`
+    touchPreviewEl.style.top = `${touch.clientY - h / 2}px`
+  }
+
+  // 高亮目标座位
+  const targetEl = document.elementFromPoint(touch.clientX, touch.clientY)
+  clearAllTouchHighlights()
+  if (targetEl) {
+    const seatEl = findParentSeat(targetEl)
+    if (seatEl && seatEl.dataset.seatId !== props.seat.id) {
+      seatEl.classList.add('drag-over')
+    }
+  }
+}
+
+const handleTouchEnd = (e) => {
+  if (touchDragTimer) {
+    clearTimeout(touchDragTimer)
+    touchDragTimer = null
+  }
+
+  if (!touchDragActive) return
+
+  // 获取 drop 目标
+  const touch = e.changedTouches[0]
+  // 先暂时隐藏预览以便 elementFromPoint 找到下方元素
+  if (touchPreviewEl) touchPreviewEl.style.display = 'none'
+  const targetEl = document.elementFromPoint(touch.clientX, touch.clientY)
+  if (touchPreviewEl) {
+    touchPreviewEl.remove()
+    touchPreviewEl = null
+  }
+
+  clearAllTouchHighlights()
+  isDragging.value = false
+  touchDragActive = false
+
+  if (!targetEl) return
+  const seatEl = findParentSeat(targetEl)
+  if (!seatEl || seatEl.dataset.seatId === props.seat.id) return
+
+  const targetSeatId = seatEl.dataset.seatId
+  // 触摸拖拽总是执行交换/分配
+  // 通过自定义事件通知 SeatChart
+  const event = new CustomEvent('touch-seat-drop', {
+    bubbles: true,
+    detail: {
+      sourceSeatId: props.seat.id,
+      targetSeatId: targetSeatId,
+      studentId: props.seat.studentId
+    }
+  })
+  seatEl.dispatchEvent(event)
+}
+
+const findParentSeat = (el) => {
+  let current = el
+  while (current && !current.dataset?.seatId) {
+    current = current.parentElement
+  }
+  return current
+}
+
+const clearAllTouchHighlights = () => {
+  document.querySelectorAll('.seat-item.drag-over').forEach(el => {
+    el.classList.remove('drag-over')
+  })
 }
 </script>
 
@@ -150,6 +324,8 @@ const handleClick = () => {
   transition: all 0.2s ease;
   position: relative;
   overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .seat-item.clickable {
@@ -162,15 +338,36 @@ const handleClick = () => {
   transform: translateY(-2px);
 }
 
+/* 拖拽相关样式 */
+.seat-item[draggable="true"] {
+  cursor: grab;
+}
+
+.seat-item[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+.seat-item.dragging {
+  opacity: 0.4;
+  transform: scale(0.95);
+  border-style: dashed;
+}
+
+.seat-item.drag-over {
+  border-color: #23587b;
+  border-width: 3px;
+  background: rgba(35, 88, 123, 0.08);
+  box-shadow: 0 0 16px rgba(35, 88, 123, 0.3);
+  transform: scale(1.03);
+}
+
 /* 空置座位样式 */
 .seat-item.empty {
-  background: repeating-linear-gradient(
-    45deg,
-    #f5f5f5,
-    #f5f5f5 10px,
-    #e0e0e0 10px,
-    #e0e0e0 20px
-  );
+  background: repeating-linear-gradient(45deg,
+      #f5f5f5,
+      #f5f5f5 10px,
+      #e0e0e0 10px,
+      #e0e0e0 20px);
   border-color: #bbb;
 }
 
@@ -249,18 +446,16 @@ const handleClick = () => {
 /* 选区高亮 */
 .seat-item.zone-highlight {
   background: linear-gradient(135deg,
-    var(--zone-color, #E0E0E0) 0%,
-    color-mix(in srgb, var(--zone-color, #E0E0E0) 60%, white) 100%
-  );
+      var(--zone-color, #E0E0E0) 0%,
+      color-mix(in srgb, var(--zone-color, #E0E0E0) 60%, white) 100%);
   border-color: var(--zone-color, #E0E0E0);
   box-shadow: 0 0 8px color-mix(in srgb, var(--zone-color, #E0E0E0) 50%, transparent);
 }
 
 .seat-item.zone-highlight.occupied {
   background: linear-gradient(135deg,
-    color-mix(in srgb, var(--zone-color, #E0E0E0) 40%, #e8f4f8) 0%,
-    color-mix(in srgb, var(--zone-color, #E0E0E0) 30%, #d0e9f2) 100%
-  );
+      color-mix(in srgb, var(--zone-color, #E0E0E0) 40%, #e8f4f8) 0%,
+      color-mix(in srgb, var(--zone-color, #E0E0E0) 30%, #d0e9f2) 100%);
 }
 
 /* 响应式调整 */
@@ -297,7 +492,13 @@ const handleClick = () => {
 
 @media (max-width: 480px) {
   .seat-item {
-    height: 65px;
+    height: 55px;
+    border-radius: 8px;
+  }
+
+  .student-display {
+    gap: 4px;
+    padding: 4px;
   }
 
   .student-name {
@@ -305,6 +506,13 @@ const handleClick = () => {
   }
 
   .student-number {
+    font-size: 10px;
+    padding: 1px 6px;
+    min-width: 30px;
+  }
+
+  .empty-text,
+  .seat-placeholder {
     font-size: 10px;
   }
 }

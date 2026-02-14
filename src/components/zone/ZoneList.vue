@@ -179,4 +179,20 @@ const handleToggleVisible = (zoneId) => {
   font-size: 12px;
   color: #bbb;
 }
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .zone-list-content {
+    max-height: 250px;
+  }
+
+  .zone-list-header h4 {
+    font-size: 14px;
+  }
+
+  .add-zone-btn {
+    font-size: 11px;
+    padding: 5px 10px;
+  }
+}
 </style>

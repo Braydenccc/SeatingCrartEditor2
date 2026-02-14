@@ -62,4 +62,47 @@ defineProps({
   color: #999;
   margin: 0;
 }
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .empty-state {
+    padding: 30px 16px;
+  }
+
+  .empty-icon {
+    margin-bottom: 12px;
+  }
+
+  .empty-icon svg {
+    width: 48px;
+    height: 48px;
+  }
+
+  .empty-text {
+    font-size: 14px;
+  }
+
+  .empty-hint {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .empty-state {
+    padding: 20px 12px;
+  }
+
+  .empty-icon svg {
+    width: 40px;
+    height: 40px;
+  }
+
+  .empty-text {
+    font-size: 13px;
+  }
+
+  .empty-hint {
+    font-size: 11px;
+  }
+}
 </style>

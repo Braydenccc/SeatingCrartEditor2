@@ -5,29 +5,15 @@
       <button class="add-tag-btn" @click="showAddDialog">+ 新建标签</button>
     </div>
     <div class="tag-list">
-      <EmptyState
-        v-if="tags.length === 0"
-        type="tag"
-        message="暂无标签"
-        hint="点击右上角添加标签"
-      />
-      <div
-        v-for="tag in tags"
-        :key="tag.id"
-        class="tag-item"
-        :style="{ borderColor: tag.color }"
-      >
-        <span class="tag-dot" :style="{ background: tag.color }"></span>
+      <EmptyState v-if="tags.length === 0" type="tag" message="暂无标签" hint="点击右上角添加标签" />
+      <div v-for="tag in tags" :key="tag.id" class="tag-item" :style="{ '--tag-color': tag.color }">
+        <span class="tag-color-bar" :style="{ background: tag.color }"></span>
         <span class="tag-name">{{ tag.name }}</span>
         <div class="tag-actions">
-          <button class="tag-action-btn" @click="editTagHandler(tag)">编辑</button>
-          <button
-            class="tag-action-btn delete"
-            :class="{ confirming: isDeletingTag(tag.id).value }"
+          <button class="tag-action-btn edit" @click="editTagHandler(tag)" title="编辑">✎</button>
+          <button class="tag-action-btn delete" :class="{ confirming: isDeletingTag(tag.id).value }"
             @click="deleteTagHandler(tag.id, tag.name)"
-          >
-            {{ isDeletingTag(tag.id).value ? '再次点击' : '删除' }}
-          </button>
+            :title="isDeletingTag(tag.id).value ? '再次点击确认' : '删除'">×</button>
         </div>
       </div>
     </div>
@@ -38,21 +24,13 @@
         <h3>{{ isEditing ? '编辑标签' : '新建标签' }}</h3>
         <div class="form-group">
           <label>标签名称:</label>
-          <input
-            v-model="currentTag.name"
-            type="text"
-            placeholder="请输入标签名称"
-            @keyup.enter="saveTag"
-            ref="nameInputRef"
-          />
+          <input v-model="currentTag.name" type="text" placeholder="请输入标签名称" @keyup.enter="saveTag"
+            ref="nameInputRef" />
         </div>
         <div class="form-group">
           <label>标签颜色:</label>
           <div class="color-picker">
-            <input
-              v-model="currentTag.color"
-              type="color"
-            />
+            <input v-model="currentTag.color" type="color" />
             <span class="color-value">{{ currentTag.color }}</span>
           </div>
         </div>
@@ -202,24 +180,24 @@ const deleteTagHandler = (tagId, tagName) => {
   padding: 10px 20px;
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  min-height: 80px;
+  gap: 8px;
+  min-height: 44px;
   max-height: 140px;
   overflow-y: auto;
 }
 
 .tag-list::-webkit-scrollbar {
-  height: 6px;
+  height: 4px;
 }
 
 .tag-list::-webkit-scrollbar-track {
   background: #f1f1f1;
-  border-radius: 3px;
+  border-radius: 2px;
 }
 
 .tag-list::-webkit-scrollbar-thumb {
   background: #bbb;
-  border-radius: 3px;
+  border-radius: 2px;
 }
 
 .tag-list::-webkit-scrollbar-thumb:hover {
@@ -227,72 +205,106 @@ const deleteTagHandler = (tagId, tagName) => {
 }
 
 .tag-item {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 14px;
-  background: #f8f9fa;
-  border: 2px solid;
-  border-radius: 20px;
-  font-size: 14px;
-  transition: all 0.2s ease;
+  gap: 0;
+  padding: 0;
+  background: color-mix(in srgb, var(--tag-color) 12%, #fff);
+  border: 1px solid color-mix(in srgb, var(--tag-color) 30%, transparent);
+  border-radius: 4px;
+  font-size: 13px;
+  transition: all 0.15s ease;
+  overflow: hidden;
+  height: 28px;
+  line-height: 28px;
 }
 
 .tag-item:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  background: color-mix(in srgb, var(--tag-color) 20%, #fff);
+  border-color: color-mix(in srgb, var(--tag-color) 50%, transparent);
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--tag-color) 20%, transparent);
 }
 
-.tag-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
+.tag-color-bar {
+  width: 4px;
+  height: 100%;
   flex-shrink: 0;
 }
 
 .tag-name {
-  color: #333;
-  font-weight: 500;
+  color: color-mix(in srgb, var(--tag-color) 80%, #1a1a1a);
+  font-weight: 600;
+  font-size: 12px;
+  padding: 0 8px;
+  white-space: nowrap;
+  letter-spacing: 0.3px;
 }
 
 .tag-actions {
   display: flex;
-  gap: 4px;
-  margin-left: 8px;
+  align-items: center;
+  gap: 0;
+  height: 100%;
+  border-left: 1px solid color-mix(in srgb, var(--tag-color) 20%, transparent);
 }
 
 .tag-action-btn {
-  padding: 3px 10px;
-  background: #e0e0e0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 100%;
+  padding: 0;
+  background: transparent;
   border: none;
-  border-radius: 4px;
   cursor: pointer;
-  font-size: 12px;
-  transition: all 0.2s;
-  font-weight: 500;
+  font-size: 14px;
+  transition: all 0.15s ease;
+  color: color-mix(in srgb, var(--tag-color) 60%, #666);
+  line-height: 1;
+}
+
+.tag-action-btn.edit {
+  font-size: 13px;
+  border-right: 1px solid color-mix(in srgb, var(--tag-color) 15%, transparent);
 }
 
 .tag-action-btn:hover {
-  background: #d0d0d0;
+  background: color-mix(in srgb, var(--tag-color) 25%, transparent);
+  color: color-mix(in srgb, var(--tag-color) 90%, #000);
 }
 
 .tag-action-btn.delete:hover {
-  background: #f44336;
-  color: white;
+  background: #fee2e2;
+  color: #dc2626;
 }
 
 .tag-action-btn.delete.confirming {
-  background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%) !important;
-  color: white !important;
-  animation: pulse 0.8s ease-in-out infinite;
-  box-shadow: 0 0 0 2px rgba(255, 152, 0, 0.2);
+  background: #fff7ed !important;
+  color: #ea580c !important;
+  animation: pulse-icon 0.8s ease-in-out infinite;
+}
+
+@keyframes pulse-icon {
+
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.2);
+  }
 }
 
 @keyframes pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: scale(1);
     box-shadow: 0 0 0 2px rgba(255, 152, 0, 0.2);
   }
+
   50% {
     transform: scale(1.05);
     box-shadow: 0 0 0 4px rgba(255, 152, 0, 0.3);
@@ -318,6 +330,7 @@ const deleteTagHandler = (tagId, tagName) => {
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -337,6 +350,7 @@ const deleteTagHandler = (tagId, tagName) => {
     transform: translateY(20px);
     opacity: 0;
   }
+
   to {
     transform: translateY(0);
     opacity: 1;
@@ -468,6 +482,35 @@ const deleteTagHandler = (tagId, tagName) => {
   .tag-list {
     padding: 8px 15px;
   }
+
+  .tag-header {
+    padding: 12px 15px;
+  }
+
+  .tag-header h4 {
+    font-size: 14px;
+  }
+
+  .add-tag-btn {
+    padding: 5px 12px;
+    font-size: 12px;
+  }
+
+  .tag-item {
+    height: 26px;
+    line-height: 26px;
+    font-size: 12px;
+  }
+
+  .tag-name {
+    font-size: 11px;
+    padding: 0 6px;
+  }
+
+  .tag-action-btn {
+    width: 24px;
+    font-size: 13px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -484,6 +527,30 @@ const deleteTagHandler = (tagId, tagName) => {
   .btn-confirm {
     padding: 10px 18px;
     font-size: 13px;
+  }
+
+  .tag-item {
+    height: 24px;
+    line-height: 24px;
+  }
+
+  .tag-name {
+    font-size: 11px;
+    padding: 0 5px;
+  }
+
+  .tag-action-btn {
+    width: 22px;
+    font-size: 12px;
+  }
+
+  .tag-color-bar {
+    width: 3px;
+  }
+
+  .tag-list {
+    max-height: 100px;
+    gap: 6px;
   }
 }
 </style>
