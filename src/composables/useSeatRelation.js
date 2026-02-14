@@ -3,6 +3,7 @@ import {
   RelationType,
   RelationStrength,
   DEFAULT_METADATA,
+  IS_HARD_CONSTRAINT,
   getRelationPriority
 } from '../constants/relationTypes.js'
 
@@ -39,6 +40,11 @@ export function useSeatRelation() {
       return null
     }
 
+    // 硬约束类型强制使用 HIGH 强度
+    const finalStrength = IS_HARD_CONSTRAINT[relationType]
+      ? RelationStrength.HIGH
+      : strength
+
     // 检查是否已存在相同的关系（无论正向还是反向）
     const exists = relations.value.some(r =>
       (r.studentId1 === studentId1 && r.studentId2 === studentId2 && r.relationType === relationType) ||
@@ -58,7 +64,7 @@ export function useSeatRelation() {
       studentId1,
       studentId2,
       relationType,
-      strength,
+      strength: finalStrength,
       metadata: finalMetadata
     }
 
@@ -141,7 +147,7 @@ export function useSeatRelation() {
   const hasRelation = (studentId1, studentId2, relationType = null) => {
     return relations.value.some(r => {
       const isMatch = (r.studentId1 === studentId1 && r.studentId2 === studentId2) ||
-                      (r.studentId1 === studentId2 && r.studentId2 === studentId1)
+        (r.studentId1 === studentId2 && r.studentId2 === studentId1)
       return relationType ? (isMatch && r.relationType === relationType) : isMatch
     })
   }

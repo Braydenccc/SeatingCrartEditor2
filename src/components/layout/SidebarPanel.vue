@@ -97,7 +97,7 @@
               <input type="checkbox" v-model="useRelations" />
               <span>使用座位联系</span>
             </label>
-            <button class="option-button primary" @click="showRelationEditor = true">
+            <button v-show="useRelations" class="option-button primary" @click="showRelationEditor = true">
               <span>座位联系编辑</span>
             </button>
           </div>

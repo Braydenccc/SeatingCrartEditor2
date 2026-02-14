@@ -1,11 +1,7 @@
 <template>
   <div class="tag-manager">
-    <div class="tag-header">
-      <h4>标签管理</h4>
-      <button class="add-tag-btn" @click="showAddDialog">+ 新建标签</button>
-    </div>
     <div class="tag-list">
-      <EmptyState v-if="tags.length === 0" type="tag" message="暂无标签" hint="点击右上角添加标签" />
+      <EmptyState v-if="tags.length === 0" type="tag" message="暂无标签" hint="点击 + 添加标签" />
       <div v-for="tag in tags" :key="tag.id" class="tag-item" :style="{ '--tag-color': tag.color }">
         <span class="tag-color-bar" :style="{ background: tag.color }"></span>
         <span class="tag-name">{{ tag.name }}</span>
@@ -16,6 +12,7 @@
             :title="isDeletingTag(tag.id).value ? '再次点击确认' : '删除'">×</button>
         </div>
       </div>
+      <button class="add-tag-btn" @click="showAddDialog" title="新建标签">+</button>
     </div>
 
     <!-- 添加/编辑标签对话框 -->
@@ -154,26 +151,31 @@ const deleteTagHandler = (tagId, tagName) => {
 }
 
 .add-tag-btn {
-  padding: 6px 14px;
-  background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
-  color: white;
-  border: none;
-  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  color: #999;
+  border: 1px dashed #ccc;
+  border-radius: 4px;
   cursor: pointer;
-  font-size: 13px;
-  font-weight: 500;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 4px rgba(76, 175, 80, 0.2);
+  font-size: 18px;
+  line-height: 1;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
 }
 
 .add-tag-btn:hover {
-  background: linear-gradient(135deg, #45a049 0%, #3d8b40 100%);
-  box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
-  transform: translateY(-1px);
+  background: #f0f7f0;
+  color: #4CAF50;
+  border-color: #4CAF50;
 }
 
 .add-tag-btn:active {
-  transform: translateY(0);
+  transform: scale(0.95);
 }
 
 .tag-list {
@@ -483,17 +485,11 @@ const deleteTagHandler = (tagId, tagName) => {
     padding: 8px 15px;
   }
 
-  .tag-header {
-    padding: 12px 15px;
-  }
-
-  .tag-header h4 {
-    font-size: 14px;
-  }
 
   .add-tag-btn {
-    padding: 5px 12px;
-    font-size: 12px;
+    width: 26px;
+    height: 26px;
+    font-size: 16px;
   }
 
   .tag-item {

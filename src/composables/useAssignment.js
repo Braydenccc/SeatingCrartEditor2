@@ -22,7 +22,9 @@ export function useAssignment() {
 
   const isAssigning = ref(false)
 
-  // 随机打乱数组(Fisher-Yates算法)
+  // ==================== 随机工具 ====================
+
+  // Fisher-Yates 洗牌
   const shuffleArray = (array) => {
     const result = [...array]
     for (let i = result.length - 1; i > 0; i--) {
@@ -32,71 +34,90 @@ export function useAssignment() {
     return result
   }
 
-  // 辅助函数：随机查找同桌座位对
-  const findDeskmatesPairRandom = (availableSeats, assignedSeatIds) => {
-    // 打乱座位顺序以实现随机性
-    const shuffledSeats = shuffleArray(availableSeats)
-
-    for (let i = 0; i < shuffledSeats.length; i++) {
-      for (let j = i + 1; j < shuffledSeats.length; j++) {
-        const seat1 = shuffledSeats[i]
-        const seat2 = shuffledSeats[j]
-
-        if (areDeskmates(seat1.id, seat2.id) &&
-            !assignedSeatIds.has(seat1.id) &&
-            !assignedSeatIds.has(seat2.id)) {
-          return [seat1, seat2]
-        }
-      }
-    }
-    return null
+  // 从数组中随机选一个
+  const pickRandom = (array) => {
+    if (array.length === 0) return null
+    return array[Math.floor(Math.random() * array.length)]
   }
 
-  // 新增：查找吸引关系的座位对
-  const findAttractionSeats = (availableSeats, assignedSeatIds, allowAdjacent = true) => {
-    const shuffled = shuffleArray(availableSeats.filter(s => !assignedSeatIds.has(s.id)))
+  // 从数组中随机选一对（返回 [a, b]）
+  const pickRandomPair = (array) => {
+    if (array.length < 2) return null
+    const shuffled = shuffleArray(array)
+    return [shuffled[0], shuffled[1]]
+  }
 
-    // 优先级1: 同桌座位（距离0）
-    for (let i = 0; i < shuffled.length; i++) {
-      for (let j = i + 1; j < shuffled.length; j++) {
-        const seat1 = shuffled[i]
-        const seat2 = shuffled[j]
+  // ==================== 座位查找策略 ====================
 
-        if (areDeskmates(seat1.id, seat2.id) &&
-            !assignedSeatIds.has(seat1.id) &&
-            !assignedSeatIds.has(seat2.id)) {
-          return { seats: [seat1, seat2], distance: 0, type: 'deskmate' }
+  // 获取当前空闲座位
+  const getFreeSeats = (allSeats, assignedSeatIds) =>
+    allSeats.filter(s => !assignedSeatIds.has(s.id))
+
+  /**
+   * 查找吸引关系座位对
+   * 优先级: 同桌 → 相邻 → 同组 → fallback
+   * 每个优先级内随机选取
+   */
+  const findAttractionSeats = (allSeats, assignedSeatIds, allowAdjacent = true) => {
+    const free = getFreeSeats(allSeats, assignedSeatIds)
+    if (free.length < 2) return null
+
+    // 收集所有同桌对
+    const deskmatesPairs = []
+    for (let i = 0; i < free.length; i++) {
+      for (let j = i + 1; j < free.length; j++) {
+        if (areDeskmates(free[i].id, free[j].id)) {
+          deskmatesPairs.push([free[i], free[j]])
         }
       }
     }
+    if (deskmatesPairs.length > 0) {
+      const pair = pickRandom(deskmatesPairs)
+      return { seats: pair, distance: 0, type: 'deskmate' }
+    }
 
-    // 优先级2: 相邻座位（距离1）
+    // 收集所有相邻对（距离 1）
     if (allowAdjacent) {
-      for (let i = 0; i < shuffled.length; i++) {
-        const seat1 = shuffled[i]
-        if (assignedSeatIds.has(seat1.id)) continue
-
-        const adjacentSeats = getAdjacentSeats(seat1.id, 1)
-        const availableAdjacent = adjacentSeats.filter(s =>
-          !assignedSeatIds.has(s.id) &&
-          shuffled.some(ss => ss.id === s.id)
-        )
-
-        if (availableAdjacent.length > 0) {
-          return {
-            seats: [seat1, availableAdjacent[0]],
-            distance: 1,
-            type: 'adjacent'
+      const adjacentPairs = []
+      for (let i = 0; i < free.length; i++) {
+        for (let j = i + 1; j < free.length; j++) {
+          const d = getSeatDistance(free[i].id, free[j].id)
+          if (d === 1) {
+            adjacentPairs.push([free[i], free[j]])
           }
         }
       }
+      if (adjacentPairs.length > 0) {
+        const pair = pickRandom(adjacentPairs)
+        return { seats: pair, distance: 1, type: 'adjacent' }
+      }
     }
 
-    // 降级：任意两个座位（无法满足吸引约束）
-    if (shuffled.length >= 2) {
+    // 收集同组对（距离有限且 > 1）
+    const sameGroupPairs = []
+    for (let i = 0; i < free.length; i++) {
+      for (let j = i + 1; j < free.length; j++) {
+        const d = getSeatDistance(free[i].id, free[j].id)
+        if (d > 1 && d !== Infinity) {
+          sameGroupPairs.push({ pair: [free[i], free[j]], distance: d })
+        }
+      }
+    }
+    if (sameGroupPairs.length > 0) {
+      // 按距离排序后从最近的几个中随机选
+      sameGroupPairs.sort((a, b) => a.distance - b.distance)
+      const minDist = sameGroupPairs[0].distance
+      const closest = sameGroupPairs.filter(p => p.distance <= minDist + 1)
+      const chosen = pickRandom(closest)
+      return { seats: chosen.pair, distance: chosen.distance, type: 'same_group' }
+    }
+
+    // 降级：随机两个座位
+    const pair = pickRandomPair(free)
+    if (pair) {
       return {
-        seats: [shuffled[0], shuffled[1]],
-        distance: getSeatDistance(shuffled[0].id, shuffled[1].id),
+        seats: pair,
+        distance: getSeatDistance(pair[0].id, pair[1].id),
         type: 'fallback'
       }
     }
@@ -104,61 +125,118 @@ export function useAssignment() {
     return null
   }
 
-  // 新增：查找排斥关系的座位对
-  const findRepulsionSeats = (availableSeats, assignedSeatIds, minDistance = 2) => {
-    const shuffled = shuffleArray(availableSeats.filter(s => !assignedSeatIds.has(s.id)))
+  /**
+   * 查找排斥关系座位对
+   * 优先级: 跨大组 → 同组满足 minDistance → fallback
+   * 每个优先级内随机选取
+   */
+  const findRepulsionSeats = (allSeats, assignedSeatIds, minDistance = 2) => {
+    const free = getFreeSeats(allSeats, assignedSeatIds)
+    if (free.length < 2) return null
 
-    // 尝试找到距离足够远的座位对
-    for (let i = 0; i < shuffled.length; i++) {
-      const seat1 = shuffled[i]
-      if (assignedSeatIds.has(seat1.id)) continue
+    // 收集所有跨组对
+    const crossGroupPairs = []
+    for (let i = 0; i < free.length; i++) {
+      for (let j = i + 1; j < free.length; j++) {
+        if (free[i].groupIndex !== free[j].groupIndex) {
+          crossGroupPairs.push([free[i], free[j]])
+        }
+      }
+    }
+    if (crossGroupPairs.length > 0) {
+      const pair = pickRandom(crossGroupPairs)
+      return { seats: pair, distance: Infinity, type: 'repulsion_cross_group' }
+    }
 
-      for (let j = i + 1; j < shuffled.length; j++) {
-        const seat2 = shuffled[j]
-        if (assignedSeatIds.has(seat2.id)) continue
+    // 收集所有满足 minDistance 的同组对
+    const distantPairs = []
+    for (let i = 0; i < free.length; i++) {
+      for (let j = i + 1; j < free.length; j++) {
+        const d = getSeatDistance(free[i].id, free[j].id)
+        if (d >= minDistance) {
+          distantPairs.push({ pair: [free[i], free[j]], distance: d })
+        }
+      }
+    }
+    if (distantPairs.length > 0) {
+      // 从最远的几个中随机选
+      distantPairs.sort((a, b) => b.distance - a.distance)
+      const maxDist = distantPairs[0].distance
+      const farthest = distantPairs.filter(p => p.distance >= maxDist - 1)
+      const chosen = pickRandom(farthest)
+      return { seats: chosen.pair, distance: chosen.distance, type: 'repulsion_satisfied' }
+    }
 
-        const distance = getSeatDistance(seat1.id, seat2.id)
+    return null
+  }
 
-        // 满足排斥要求（距离足够远或不同大组）
-        if (distance >= minDistance || distance === Infinity) {
-          return {
-            seats: [seat1, seat2],
-            distance,
-            type: 'repulsion_satisfied'
-          }
+  /**
+   * 同桌绑定：必须找到同桌座位对，从候选中随机
+   */
+  const findSeatmateBindingSeats = (allSeats, assignedSeatIds) => {
+    const free = getFreeSeats(allSeats, assignedSeatIds)
+    const pairs = []
+
+    for (let i = 0; i < free.length; i++) {
+      for (let j = i + 1; j < free.length; j++) {
+        if (areDeskmates(free[i].id, free[j].id)) {
+          pairs.push([free[i], free[j]])
         }
       }
     }
 
-    // 无法满足排斥约束
+    if (pairs.length > 0) {
+      const pair = pickRandom(pairs)
+      return { seats: pair, distance: 0, type: 'seatmate_binding' }
+    }
+
     return null
   }
 
-  // 执行排位（新算法：支持吸引和排斥关系）
+  /**
+   * 同桌排斥：禁止同桌，随机选非同桌对
+   */
+  const findSeatmateRepulsionSeats = (allSeats, assignedSeatIds) => {
+    const free = getFreeSeats(allSeats, assignedSeatIds)
+    const pairs = []
+
+    for (let i = 0; i < free.length; i++) {
+      for (let j = i + 1; j < free.length; j++) {
+        if (!areDeskmates(free[i].id, free[j].id)) {
+          pairs.push([free[i], free[j]])
+        }
+      }
+    }
+
+    if (pairs.length > 0) {
+      const pair = pickRandom(pairs)
+      const distance = getSeatDistance(pair[0].id, pair[1].id)
+      return { seats: pair, distance, type: 'seatmate_repulsion' }
+    }
+
+    return null
+  }
+
+  // ==================== 主排位算法 ====================
+
   const runAssignment = async (useRelations = false) => {
     if (isAssigning.value) {
-      return {
-        success: false,
-        message: '正在排位中,请稍候...'
-      }
+      return { success: false, message: '正在排位中,请稍候...' }
     }
 
     isAssigning.value = true
 
     try {
-      // 清空现有分配
       clearAllSeats()
 
-      // 获取所有学生和座位
       const allStudents = shuffleArray(students.value.map(s => ({ ...s })))
-      const allSeats = getAvailableSeats()
+      const allSeats = shuffleArray(getAvailableSeats()) // 座位也打乱
 
-      // 获取所有选区
       const allZones = zones.value || []
 
       // 按选区分组座位
-      const zoneSeatMap = new Map() // zoneId -> seats[]
-      const nonZoneSeats = [] // 不属于任何选区的座位
+      const zoneSeatMap = new Map()
+      const nonZoneSeats = []
 
       allSeats.forEach(seat => {
         const zone = getZoneForSeat(seat.id)
@@ -169,23 +247,6 @@ export function useAssignment() {
           zoneSeatMap.get(zone.id).push(seat)
         } else {
           nonZoneSeats.push(seat)
-        }
-      })
-
-      // 按学生标签分组
-      const studentsByTags = new Map() // tagId -> students[]
-      const studentsWithoutTags = []
-
-      allStudents.forEach(student => {
-        if (student.tags && student.tags.length > 0) {
-          student.tags.forEach(tagId => {
-            if (!studentsByTags.has(tagId)) {
-              studentsByTags.set(tagId, [])
-            }
-            studentsByTags.get(tagId).push(student)
-          })
-        } else {
-          studentsWithoutTags.push(student)
         }
       })
 
@@ -211,7 +272,6 @@ export function useAssignment() {
       const assignedStudentIds = new Set()
       const assignedSeatIds = new Set()
 
-      // 辅助函数：分配学生到座位
       const assignToSeat = (student, seat) => {
         assignments.push({ studentId: student.id, seatId: seat.id })
         assignedStudentIds.add(student.id)
@@ -219,81 +279,95 @@ export function useAssignment() {
         assignStudent(seat.id, student.id)
       }
 
-      // 策略0：优先处理联系关系（按优先级）
+      // 随机分配单个学生到一个随机空闲座位
+      const assignStudentRandomly = (student, candidateSeats) => {
+        const free = shuffleArray(candidateSeats.filter(s => !assignedSeatIds.has(s.id)))
+        if (free.length > 0) {
+          assignToSeat(student, free[0])
+          return true
+        }
+        return false
+      }
+
+      // ========== 策略0：处理联系关系 ==========
       if (useRelations && relationPairs.length > 0) {
         for (const pair of relationPairs) {
           const { relation, student1, student2 } = pair
 
-          // 检查学生是否已分配
           if (assignedStudentIds.has(student1.id) || assignedStudentIds.has(student2.id)) {
             continue
           }
 
-          // 根据关系类型选择座位查找策略
           let result = null
-          const availableSeats = allSeats.filter(s => !assignedSeatIds.has(s.id))
 
           if (relation.relationType === RelationType.ATTRACTION) {
-            // 吸引关系：尽量安排在一起
             const allowAdjacent = relation.metadata?.allowAdjacent ?? true
-            result = findAttractionSeats(availableSeats, assignedSeatIds, allowAdjacent)
+            result = findAttractionSeats(allSeats, assignedSeatIds, allowAdjacent)
           } else if (relation.relationType === RelationType.REPULSION) {
-            // 排斥关系：尽量分开
             const minDistance = relation.metadata?.minDistance ?? 2
-            result = findRepulsionSeats(availableSeats, assignedSeatIds, minDistance)
+            result = findRepulsionSeats(allSeats, assignedSeatIds, minDistance)
+          } else if (relation.relationType === RelationType.SEATMATE_BINDING) {
+            result = findSeatmateBindingSeats(allSeats, assignedSeatIds)
+          } else if (relation.relationType === RelationType.SEATMATE_REPULSION) {
+            result = findSeatmateRepulsionSeats(allSeats, assignedSeatIds)
           }
 
-          // 如果找到了合适的座位，分配学生
           if (result && result.seats.length === 2) {
-            assignToSeat(student1, result.seats[0])
-            assignToSeat(student2, result.seats[1])
+            // 随机决定 student1/student2 分别坐哪个座位
+            if (Math.random() < 0.5) {
+              assignToSeat(student1, result.seats[0])
+              assignToSeat(student2, result.seats[1])
+            } else {
+              assignToSeat(student1, result.seats[1])
+              assignToSeat(student2, result.seats[0])
+            }
             satisfiedRelations++
           }
         }
       }
 
-      // 策略1：优先处理选区约束
-      for (const [zoneId, zoneSeats] of zoneSeatMap) {
+      // ========== 策略1：选区约束 ==========
+      const shuffledZoneEntries = shuffleArray([...zoneSeatMap.entries()])
+      for (const [zoneId, zoneSeats] of shuffledZoneEntries) {
         const zone = allZones.find(z => z.id === zoneId)
         if (!zone || !zone.tagIds || zone.tagIds.length === 0) continue
 
-        // 找出所有符合此选区标签的学生（至少有一个标签匹配）
-        const eligibleStudents = allStudents.filter(student => {
-          if (assignedStudentIds.has(student.id)) return false
-          if (!student.tags || student.tags.length === 0) return false
-          return student.tags.some(tagId => zone.tagIds.includes(tagId))
-        })
+        const eligibleStudents = shuffleArray(
+          allStudents.filter(student => {
+            if (assignedStudentIds.has(student.id)) return false
+            if (!student.tags || student.tags.length === 0) return false
+            return student.tags.some(tagId => zone.tagIds.includes(tagId))
+          })
+        )
 
-        // 可用座位
-        const availableZoneSeats = zoneSeats.filter(s => !assignedSeatIds.has(s.id))
+        const availableZoneSeats = shuffleArray(
+          zoneSeats.filter(s => !assignedSeatIds.has(s.id))
+        )
 
-        // 分配剩余的符合条件的学生
-        const remainingEligible = shuffleArray(eligibleStudents.filter(s => !assignedStudentIds.has(s.id)))
-        const remainingSeats = availableZoneSeats.filter(s => !assignedSeatIds.has(s.id))
-
-        for (let i = 0; i < Math.min(remainingEligible.length, remainingSeats.length); i++) {
-          assignToSeat(remainingEligible[i], remainingSeats[i])
+        const count = Math.min(eligibleStudents.length, availableZoneSeats.length)
+        for (let i = 0; i < count; i++) {
+          assignToSeat(eligibleStudents[i], availableZoneSeats[i])
         }
       }
 
-      // 策略2：处理非选区座位
-      const unassignedStudents = allStudents.filter(s => !assignedStudentIds.has(s.id))
-      const availableNonZoneSeats = nonZoneSeats.filter(s => !assignedSeatIds.has(s.id))
+      // ========== 策略2：剩余学生 → 剩余座位（全局） ==========
+      // 合并所有剩余座位（包括选区中未被占用的）
+      const finalUnassigned = shuffleArray(
+        allStudents.filter(s => !assignedStudentIds.has(s.id))
+      )
+      const finalAvailableSeats = shuffleArray(
+        allSeats.filter(s => !assignedSeatIds.has(s.id))
+      )
 
-      // 分配剩余学生到剩余座位
-      const finalUnassigned = shuffleArray(allStudents.filter(s => !assignedStudentIds.has(s.id)))
-      const finalAvailableSeats = availableNonZoneSeats.filter(s => !assignedSeatIds.has(s.id))
-
-      for (let i = 0; i < Math.min(finalUnassigned.length, finalAvailableSeats.length); i++) {
+      const finalCount = Math.min(finalUnassigned.length, finalAvailableSeats.length)
+      for (let i = 0; i < finalCount; i++) {
         assignToSeat(finalUnassigned[i], finalAvailableSeats[i])
       }
 
-      // 统计结果
+      // ========== 统计结果 ==========
       const unassigned = allStudents.filter(s => !assignedStudentIds.has(s.id))
 
-      // 构建结果消息
       let message = `成功分配 ${assignments.length} 个学生`
-
       if (useRelations && totalRelations > 0) {
         message += `\n联系关系: ${satisfiedRelations}/${totalRelations} 满足`
       }
@@ -327,16 +401,16 @@ export function useAssignment() {
     }
   }
 
-  // 简化版随机排位(不考虑约束,仅随机分配)
+  // 简化版随机排位（纯随机）
   const runRandomAssignment = () => {
-    const allStudents = shuffleArray(students.value.map(s => ({ ...s })))
-    const emptySeats = getEmptySeats()
-
     clearAllSeats()
 
-    const count = Math.min(allStudents.length, emptySeats.length)
+    const allStudents = shuffleArray(students.value.map(s => ({ ...s })))
+    const allSeats = shuffleArray(getAvailableSeats())
+
+    const count = Math.min(allStudents.length, allSeats.length)
     for (let i = 0; i < count; i++) {
-      assignStudent(emptySeats[i].id, allStudents[i].id)
+      assignStudent(allSeats[i].id, allStudents[i].id)
     }
 
     return {

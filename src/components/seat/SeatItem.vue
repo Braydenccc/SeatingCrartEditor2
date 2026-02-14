@@ -45,6 +45,7 @@ const { visibleZoneSeats, selectedZoneId, toggleSeatInZone } = useZoneData()
 
 const isDragOver = ref(false)
 const isDragging = ref(false)
+let dragEnterCount = 0
 
 // 触摸拖拽状态
 let touchDragTimer = null
@@ -141,6 +142,7 @@ const handleDragStart = (e) => {
 
 const handleDragEnd = () => {
   isDragging.value = false
+  dragEnterCount = 0
 }
 
 const handleDragOverSeat = (e) => {
@@ -148,17 +150,23 @@ const handleDragOverSeat = (e) => {
 }
 
 const handleDragEnter = () => {
+  dragEnterCount++
   if (!props.seat.isEmpty) {
     isDragOver.value = true
   }
 }
 
 const handleDragLeave = () => {
-  isDragOver.value = false
+  dragEnterCount--
+  if (dragEnterCount <= 0) {
+    dragEnterCount = 0
+    isDragOver.value = false
+  }
 }
 
 const handleDrop = (e) => {
   isDragOver.value = false
+  dragEnterCount = 0
   const raw = e.dataTransfer.getData('application/json')
   if (!raw) return
 
@@ -185,7 +193,6 @@ const handleDrop = (e) => {
 // ==================== 触摸拖拽模拟 ====================
 
 const handleTouchStart = (e) => {
-  // 仅单指 + 可拖拽时启动长按
   if (e.touches.length !== 1 || !isDraggable.value) return
 
   const touch = e.touches[0]
@@ -196,7 +203,6 @@ const handleTouchStart = (e) => {
     touchDragActive = true
     isDragging.value = true
 
-    // 创建拖拽预览
     const rect = e.currentTarget.getBoundingClientRect()
     touchPreviewEl = document.createElement('div')
     touchPreviewEl.className = 'touch-drag-preview'
@@ -207,7 +213,9 @@ const handleTouchStart = (e) => {
       top: ${startY - rect.height / 2}px;
       width: ${rect.width}px;
       height: ${rect.height}px;
-      background: rgba(35, 88, 123, 0.9);
+      background: rgba(35, 88, 123, 0.85);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
       color: white;
       border-radius: 12px;
       display: flex;
@@ -217,12 +225,19 @@ const handleTouchStart = (e) => {
       font-weight: 600;
       pointer-events: none;
       z-index: 9999;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
-      transition: none;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.1);
+      transform: scale(0.85);
+      opacity: 0;
+      transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1), opacity 0.15s ease;
     `
     document.body.appendChild(touchPreviewEl)
+    requestAnimationFrame(() => {
+      if (touchPreviewEl) {
+        touchPreviewEl.style.transform = 'scale(1)'
+        touchPreviewEl.style.opacity = '1'
+      }
+    })
 
-    // 触觉反馈
     if (navigator.vibrate) navigator.vibrate(30)
   }, 300)
 }
@@ -238,6 +253,7 @@ const handleTouchMove = (e) => {
 
   const touch = e.touches[0]
   if (touchPreviewEl) {
+    touchPreviewEl.style.transition = 'none'
     const w = touchPreviewEl.offsetWidth
     const h = touchPreviewEl.offsetHeight
     touchPreviewEl.style.left = `${touch.clientX - w / 2}px`
@@ -321,7 +337,7 @@ const clearAllTouchHighlights = () => {
   align-items: center;
   justify-content: center;
   background: white;
-  transition: all 0.2s ease;
+  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
   position: relative;
   overflow: hidden;
   user-select: none;
@@ -348,17 +364,31 @@ const clearAllTouchHighlights = () => {
 }
 
 .seat-item.dragging {
-  opacity: 0.4;
-  transform: scale(0.95);
+  opacity: 0.35;
+  transform: scale(0.92);
   border-style: dashed;
+  border-color: #90a4ae;
+  filter: grayscale(0.4);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .seat-item.drag-over {
   border-color: #23587b;
-  border-width: 3px;
-  background: rgba(35, 88, 123, 0.08);
-  box-shadow: 0 0 16px rgba(35, 88, 123, 0.3);
-  transform: scale(1.03);
+  border-width: 2.5px;
+  background: linear-gradient(135deg, rgba(35, 88, 123, 0.06) 0%, rgba(35, 88, 123, 0.12) 100%);
+  box-shadow: 0 0 0 3px rgba(35, 88, 123, 0.15), 0 4px 16px rgba(35, 88, 123, 0.2);
+  transform: scale(1.04);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: drag-over-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes drag-over-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 3px rgba(35, 88, 123, 0.15), 0 4px 16px rgba(35, 88, 123, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(35, 88, 123, 0.1), 0 6px 24px rgba(35, 88, 123, 0.3);
+  }
 }
 
 /* 空置座位样式 */

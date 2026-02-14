@@ -9,40 +9,32 @@
       <div class="modal-body">
         <!-- 联系关系列表 -->
         <div class="relation-list">
-          <h4>当前联系关系</h4>
+          <h4>当前联系关系 <span class="relation-count" v-if="relations.length > 0">({{ relations.length }})</span></h4>
           <div v-if="relations.length === 0" class="empty-relation">
-            暂无联系关系
+            暂无联系关系，请在下方添加
           </div>
-          <div
-            v-for="relation in relations"
-            :key="relation.id"
-            class="relation-item"
-            :class="[`relation-${relation.relationType}`]"
-          >
-            <div class="relation-badge" :class="[`badge-${relation.relationType}`]">
+          <div v-for="relation in relations" :key="relation.id" class="relation-item"
+            :style="{ '--rel-color': RELATION_COLORS[relation.relationType] }">
+            <div class="relation-badge" :style="{ background: RELATION_COLORS[relation.relationType] }">
               {{ RELATION_LABELS[relation.relationType] }}
             </div>
             <div class="relation-students">
-              <span class="student-name">{{ getStudentName(relation.studentId1) }}</span>
-              <span class="relation-icon" :class="[`icon-${relation.relationType}`]">
-                {{ RELATION_ICONS[relation.relationType] }}
-              </span>
-              <span class="student-name">{{ getStudentName(relation.studentId2) }}</span>
+              <span class="student-name-tag">{{ getStudentName(relation.studentId1) }}</span>
+              <span class="relation-sep">—</span>
+              <span class="student-name-tag">{{ getStudentName(relation.studentId2) }}</span>
             </div>
-            <div class="relation-info">
-              <span class="strength-tag" :class="[`strength-${relation.strength}`]">
+            <div class="relation-meta">
+              <span class="strength-pill"
+                :style="{ background: STRENGTH_COLORS[relation.strength], color: relation.strength === 'low' ? '#fff' : '#fff' }">
                 {{ STRENGTH_LABELS[relation.strength] }}
               </span>
               <span v-if="relation.relationType === 'repulsion'" class="distance-info">
                 距离≥{{ relation.metadata?.minDistance || 2 }}
               </span>
             </div>
-            <button
-              class="delete-relation-btn"
-              :class="{ confirming: isDeletingRelation(relation.id).value }"
-              @click="handleDeleteRelation(relation)"
-            >
-              {{ isDeletingRelation(relation.id).value ? '再次点击' : '删除' }}
+            <button class="delete-relation-btn" :class="{ confirming: isDeletingRelation(relation.id).value }"
+              @click="handleDeleteRelation(relation)">
+              {{ isDeletingRelation(relation.id).value ? '确认' : '×' }}
             </button>
           </div>
         </div>
@@ -51,70 +43,57 @@
         <div class="add-relation-form">
           <h4>添加新联系</h4>
 
-          <!-- 学生选择行 -->
-          <div class="form-row">
-            <select v-model="selectedStudent1" class="student-select">
-              <option :value="null">选择学生1</option>
-              <option
-                v-for="student in availableStudents"
-                :key="student.id"
-                :value="student.id"
-              >
-                {{ student.studentNumber || '-' }} {{ student.name || '未命名' }}
-              </option>
-            </select>
+          <!-- 关系类型选择器（卡片式） -->
+          <div class="type-cards">
+            <div v-for="typeKey in relationTypeKeys" :key="typeKey" class="type-card"
+              :class="{ active: selectedRelationType === typeKey }"
+              :style="{ '--card-color': RELATION_COLORS[typeKey] }" @click="selectRelationType(typeKey)">
+              <span class="type-icon" v-html="TYPE_SVGS[typeKey]"></span>
+              <span class="type-label">{{ RELATION_LABELS[typeKey] }}</span>
+              <span class="type-desc">{{ RELATION_DESCRIPTIONS[typeKey] }}</span>
+            </div>
+          </div>
 
-            <!-- 关系类型切换 -->
-            <div class="relation-type-selector">
-              <label class="radio-label" :class="{ active: selectedRelationType === 'attraction' }">
-                <input
-                  type="radio"
-                  v-model="selectedRelationType"
-                  value="attraction"
-                />
-                <span class="radio-text">吸引</span>
-              </label>
-              <label class="radio-label" :class="{ active: selectedRelationType === 'repulsion' }">
-                <input
-                  type="radio"
-                  v-model="selectedRelationType"
-                  value="repulsion"
-                />
-                <span class="radio-text">排斥</span>
-              </label>
+          <!-- 学生选择行 -->
+          <div class="student-row">
+            <div class="student-select-wrapper">
+              <label>学生 A</label>
+              <select v-model="selectedStudent1" class="student-select">
+                <option :value="null">选择学生</option>
+                <option v-for="student in availableStudents" :key="student.id" :value="student.id">
+                  {{ student.studentNumber || '-' }} {{ student.name || '未命名' }}
+                </option>
+              </select>
             </div>
 
-            <select v-model="selectedStudent2" class="student-select">
-              <option :value="null">选择学生2</option>
-              <option
-                v-for="student in availableStudents2"
-                :key="student.id"
-                :value="student.id"
-              >
-                {{ student.studentNumber || '-' }} {{ student.name || '未命名' }}
-              </option>
-            </select>
+            <div class="student-select-wrapper">
+              <label>学生 B</label>
+              <select v-model="selectedStudent2" class="student-select">
+                <option :value="null">选择学生</option>
+                <option v-for="student in availableStudents2" :key="student.id" :value="student.id">
+                  {{ student.studentNumber || '-' }} {{ student.name || '未命名' }}
+                </option>
+              </select>
+            </div>
           </div>
 
           <!-- 高级选项 -->
           <div class="advanced-options">
+            <!-- 优先级（非硬约束时可选） -->
             <div class="option-row">
               <label class="option-label">优先级：</label>
               <div class="strength-selector">
-                <label
-                  v-for="strength in ['high', 'medium', 'low']"
-                  :key="strength"
-                  class="strength-option"
-                  :class="{ active: selectedStrength === strength }"
-                >
-                  <input
-                    type="radio"
-                    v-model="selectedStrength"
-                    :value="strength"
-                  />
-                  <span>{{ STRENGTH_LABELS[strength] }}</span>
+                <label v-for="strength in ['high', 'medium', 'low']" :key="strength" class="strength-option" :class="{
+                  active: currentStrength === strength,
+                  disabled: isHardConstraint
+                }"
+                  :style="currentStrength === strength ? { background: STRENGTH_COLORS[strength], borderColor: STRENGTH_COLORS[strength] } : {}">
+                  <input type="radio" v-model="selectedStrength" :value="strength" :disabled="isHardConstraint" />
+                  <span class="strength-label">{{ STRENGTH_LABELS[strength] }}</span>
+                  <span class="strength-desc">{{ STRENGTH_DESCRIPTIONS[strength] }}</span>
                 </label>
               </div>
+              <span v-if="isHardConstraint" class="hard-hint">此类型为硬约束，优先级固定为"必须"</span>
             </div>
 
             <!-- 排斥关系的最小距离 -->
@@ -126,7 +105,7 @@
                 <option :value="4">4个座位</option>
                 <option :value="5">5个座位</option>
               </select>
-              <span class="distance-hint">（不同大组视为满足）</span>
+              <span class="distance-hint">（按座位图距离计算）</span>
             </div>
           </div>
 
@@ -135,18 +114,18 @@
             ⚠️ {{ conflictWarning }}
           </div>
 
-          <button
-            class="add-relation-btn"
-            :class="[`btn-${selectedRelationType}`]"
-            :disabled="!canAddRelation"
-            @click="handleAddRelation"
-          >
-            添加联系
+          <button class="add-relation-btn"
+            :style="canAddRelation ? { background: RELATION_COLORS[selectedRelationType] } : {}"
+            :disabled="!canAddRelation" @click="handleAddRelation">
+            添加{{ RELATION_LABELS[selectedRelationType] }}联系
           </button>
         </div>
       </div>
 
       <div class="modal-footer">
+        <span class="footer-stats" v-if="relations.length > 0">
+          共 {{ relations.length }} 条联系
+        </span>
         <button class="btn-secondary" @click="close">关闭</button>
       </div>
     </div>
@@ -164,7 +143,12 @@ import {
   RelationStrength,
   RELATION_LABELS,
   RELATION_ICONS,
-  STRENGTH_LABELS
+  RELATION_COLORS,
+  RELATION_DESCRIPTIONS,
+  STRENGTH_LABELS,
+  STRENGTH_DESCRIPTIONS,
+  STRENGTH_COLORS,
+  IS_HARD_CONSTRAINT
 } from '@/constants/relationTypes.js'
 
 const props = defineProps({
@@ -187,12 +171,58 @@ const {
 const { requestConfirm, isConfirming } = useConfirmAction()
 const { warning } = useLogger()
 
+// 关系类型 keys
+const relationTypeKeys = Object.values(RelationType)
+
+// 卡片 SVG 图标
+const TYPE_SVGS = {
+  // 吸引：双箭头相向
+  attraction: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M7 12h10"/>
+    <path d="M3 12l4 4M3 12l4-4"/>
+    <path d="M21 12l-4-4M21 12l-4 4"/>
+  </svg>`,
+  // 排斥：两个箭头相背
+  repulsion: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M7 12h10"/>
+    <path d="M10 8l-4 4 4 4"/>
+    <path d="M14 8l4 4-4 4"/>
+  </svg>`,
+  // 同桌绑定：锁链
+  seatmate_binding: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+  </svg>`,
+  // 同桌排斥：断开的锁链
+  seatmate_repulsion: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+    <line x1="4" y1="4" x2="20" y2="20" stroke-width="2.5"/>
+  </svg>`
+}
+
 // 表单状态
 const selectedStudent1 = ref(null)
 const selectedStudent2 = ref(null)
 const selectedRelationType = ref(RelationType.ATTRACTION)
 const selectedStrength = ref(RelationStrength.HIGH)
 const minDistance = ref(2)
+
+// 是否为硬约束
+const isHardConstraint = computed(() => IS_HARD_CONSTRAINT[selectedRelationType.value])
+
+// 当前实际使用的强度（硬约束强制 HIGH）
+const currentStrength = computed(() =>
+  isHardConstraint.value ? RelationStrength.HIGH : selectedStrength.value
+)
+
+// 选择关系类型
+const selectRelationType = (type) => {
+  selectedRelationType.value = type
+  if (IS_HARD_CONSTRAINT[type]) {
+    selectedStrength.value = RelationStrength.HIGH
+  }
+}
 
 // 重置表单
 const resetForm = () => {
@@ -241,7 +271,7 @@ const conflictWarning = computed(() => {
     if (existingRelation.relationType === selectedRelationType.value) {
       return '该联系关系已存在'
     } else {
-      return `已存在相反的${RELATION_LABELS[existingRelation.relationType]}关系，添加后可能产生冲突`
+      return `已存在"${RELATION_LABELS[existingRelation.relationType]}"关系，添加后可能产生冲突`
     }
   }
 
@@ -253,7 +283,6 @@ const canAddRelation = computed(() => {
   if (!selectedStudent1.value || !selectedStudent2.value) return false
   if (selectedStudent1.value === selectedStudent2.value) return false
 
-  // 检查是否已存在完全相同的关系
   const exists = hasRelation(
     selectedStudent1.value,
     selectedStudent2.value,
@@ -267,15 +296,23 @@ const canAddRelation = computed(() => {
 const handleAddRelation = () => {
   if (!canAddRelation.value) return
 
-  const metadata = selectedRelationType.value === RelationType.REPULSION
-    ? { minDistance: minDistance.value, allowAdjacent: false }
-    : { allowAdjacent: true, minDistance: 0 }
+  let metadata = {}
+
+  if (selectedRelationType.value === RelationType.REPULSION) {
+    metadata = { minDistance: minDistance.value, allowAdjacent: false, allowCrossGroup: true }
+  } else if (selectedRelationType.value === RelationType.ATTRACTION) {
+    metadata = { allowAdjacent: true, minDistance: 0, allowCrossGroup: true }
+  } else if (selectedRelationType.value === RelationType.SEATMATE_BINDING) {
+    metadata = { allowCrossGroup: false }
+  } else if (selectedRelationType.value === RelationType.SEATMATE_REPULSION) {
+    metadata = { allowCrossGroup: true }
+  }
 
   const result = addRelation(
     selectedStudent1.value,
     selectedStudent2.value,
     selectedRelationType.value,
-    selectedStrength.value,
+    currentStrength.value,
     metadata
   )
 
@@ -331,7 +368,7 @@ const close = () => {
   border-radius: 12px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   width: 90%;
-  max-width: 700px;
+  max-width: 720px;
   max-height: 85vh;
   display: flex;
   flex-direction: column;
@@ -380,7 +417,7 @@ const close = () => {
 }
 
 .modal-body::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
 }
 
 .modal-body::-webkit-scrollbar-track {
@@ -389,18 +426,25 @@ const close = () => {
 
 .modal-body::-webkit-scrollbar-thumb {
   background: #ccc;
-  border-radius: 4px;
+  border-radius: 3px;
 }
 
 .modal-body h4 {
   margin: 0 0 12px 0;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   color: #23587b;
 }
 
+.relation-count {
+  font-weight: 400;
+  color: #999;
+  font-size: 13px;
+}
+
+/* ==================== 关系列表 ==================== */
 .relation-list {
-  margin-bottom: 30px;
+  margin-bottom: 24px;
 }
 
 .empty-relation {
@@ -408,161 +452,226 @@ const close = () => {
   padding: 20px;
   color: #999;
   font-size: 14px;
+  background: #fafafa;
+  border-radius: 8px;
+  border: 1px dashed #e0e0e0;
 }
 
 .relation-item {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
-  margin-bottom: 8px;
-  background: #f8f9fa;
-  border: 2px solid;
-  border-radius: 8px;
-  transition: all 0.2s;
-  gap: 12px;
-}
-
-.relation-item.relation-attraction {
-  border-color: #4CAF50;
-}
-
-.relation-item.relation-repulsion {
-  border-color: #F44336;
+  padding: 10px 14px;
+  margin-bottom: 6px;
+  background: #fafafa;
+  border: 1px solid #eee;
+  border-left: 3px solid var(--rel-color);
+  border-radius: 6px;
+  transition: all 0.15s;
+  gap: 10px;
 }
 
 .relation-item:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background: #f0f4f8;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
 
 .relation-badge {
-  padding: 4px 8px;
+  padding: 2px 8px;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   color: white;
-  min-width: 42px;
-  text-align: center;
-}
-
-.badge-attraction {
-  background: #4CAF50;
-}
-
-.badge-repulsion {
-  background: #F44336;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .relation-students {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
   flex: 1;
+  min-width: 0;
 }
 
-.student-name {
-  font-size: 14px;
+.student-name-tag {
+  font-size: 13px;
   font-weight: 500;
   color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.relation-icon {
-  font-size: 16px;
-  font-weight: 700;
+.relation-sep {
+  font-size: 13px;
+  color: #ccc;
+  flex-shrink: 0;
 }
 
-.icon-attraction {
-  color: #4CAF50;
-}
-
-.icon-repulsion {
-  color: #F44336;
-}
-
-.relation-info {
+.relation-meta {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
-.strength-tag {
+.strength-pill {
   padding: 2px 8px;
-  border-radius: 3px;
-  font-size: 11px;
+  border-radius: 10px;
+  font-size: 10px;
   font-weight: 600;
-}
-
-.strength-tag.strength-high {
-  background: #ffeb3b;
-  color: #333;
-}
-
-.strength-tag.strength-medium {
-  background: #ffc107;
-  color: #333;
-}
-
-.strength-tag.strength-low {
-  background: #ff9800;
-  color: white;
+  letter-spacing: 0.5px;
 }
 
 .distance-info {
   font-size: 11px;
-  color: #666;
+  color: #888;
+  white-space: nowrap;
 }
 
 .delete-relation-btn {
-  padding: 6px 12px;
-  background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
-  color: white;
-  border: none;
-  border-radius: 6px;
+  width: 26px;
+  height: 26px;
+  background: transparent;
+  color: #ccc;
+  border: 1px solid #e0e0e0;
+  border-radius: 50%;
   cursor: pointer;
-  font-size: 12px;
-  font-weight: 500;
-  transition: all 0.2s;
+  font-size: 14px;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0;
+  line-height: 1;
 }
 
 .delete-relation-btn:hover {
-  background: linear-gradient(135deg, #d32f2f 0%, #c62828 100%);
+  background: #fee2e2;
+  color: #dc2626;
+  border-color: #dc2626;
 }
 
 .delete-relation-btn.confirming {
-  background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%) !important;
-  animation: pulse 0.8s ease-in-out infinite;
-  box-shadow: 0 0 0 2px rgba(255, 152, 0, 0.2);
+  background: #fff7ed !important;
+  color: #ea580c !important;
+  border-color: #ea580c !important;
+  animation: pulse-rel 0.6s ease-in-out infinite;
+  font-size: 11px;
 }
 
-@keyframes pulse {
-  0%, 100% {
+@keyframes pulse-rel {
+
+  0%,
+  100% {
     transform: scale(1);
-    box-shadow: 0 0 0 2px rgba(255, 152, 0, 0.2);
   }
+
   50% {
-    transform: scale(1.05);
-    box-shadow: 0 0 0 4px rgba(255, 152, 0, 0.3);
+    transform: scale(1.15);
   }
 }
 
+/* ==================== 添加表单 ==================== */
 .add-relation-form {
   padding-top: 20px;
   border-top: 2px solid #e0e0e0;
 }
 
-.form-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+/* 关系类型卡片 */
+.type-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
   margin-bottom: 16px;
 }
 
-.student-select {
+.type-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 6px;
+  border: 2px solid #e8e8e8;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s ease;
+  background: white;
+  gap: 4px;
+}
+
+.type-card:hover {
+  border-color: var(--card-color);
+  background: color-mix(in srgb, var(--card-color) 5%, #fff);
+}
+
+.type-card.active {
+  border-color: var(--card-color);
+  background: color-mix(in srgb, var(--card-color) 10%, #fff);
+  box-shadow: 0 0 0 1px var(--card-color);
+}
+
+.type-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  color: var(--card-color);
+  line-height: 1;
+}
+
+.type-icon :deep(svg) {
+  width: 24px;
+  height: 24px;
+}
+
+.type-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+}
+
+.type-desc {
+  font-size: 10px;
+  color: #999;
+  line-height: 1.3;
+}
+
+/* 学生选择行 */
+.student-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.student-select-wrapper {
   flex: 1;
-  padding: 10px 12px;
+}
+
+.student-select-wrapper label {
+  display: block;
+  font-size: 12px;
+  color: #888;
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
+.relation-arrow {
+  font-size: 20px;
+  font-weight: 700;
+  padding-bottom: 8px;
+  flex-shrink: 0;
+}
+
+.student-select {
+  width: 100%;
+  padding: 9px 10px;
   border: 2px solid #e0e0e0;
   border-radius: 6px;
-  font-size: 14px;
+  font-size: 13px;
   outline: none;
   transition: border-color 0.2s;
 }
@@ -571,61 +680,16 @@ const close = () => {
   border-color: #23587b;
 }
 
-.relation-type-selector {
-  display: flex;
-  gap: 8px;
-}
-
-.radio-label {
-  display: flex;
-  align-items: center;
-  padding: 8px 14px;
-  border: 2px solid #e0e0e0;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.radio-label input[type="radio"] {
-  display: none;
-}
-
-.radio-label .radio-text {
-  font-size: 14px;
-  font-weight: 500;
-  color: #666;
-}
-
-.radio-label.active {
-  font-weight: 600;
-}
-
-.radio-label.active .radio-text {
-  color: white;
-}
-
-.radio-label.active:has(input[value="attraction"]) {
-  background: #4CAF50;
-  border-color: #4CAF50;
-}
-
-.radio-label.active:has(input[value="repulsion"]) {
-  background: #F44336;
-  border-color: #F44336;
-}
-
+/* 高级选项 */
 .advanced-options {
   background: #f8f9fa;
-  padding: 16px;
+  padding: 14px;
   border-radius: 8px;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
 }
 
 .option-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .option-row:last-child {
@@ -633,24 +697,32 @@ const close = () => {
 }
 
 .option-label {
-  font-size: 14px;
+  display: block;
+  font-size: 13px;
   font-weight: 500;
-  color: #333;
-  min-width: 70px;
+  color: #555;
+  margin-bottom: 8px;
 }
 
+/* 优先级选择器 */
 .strength-selector {
   display: flex;
-  gap: 8px;
+  gap: 6px;
 }
 
 .strength-option {
-  padding: 6px 12px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 6px;
   border: 2px solid #e0e0e0;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
-  font-size: 13px;
+  text-align: center;
   transition: all 0.2s;
+  background: white;
+  gap: 2px;
 }
 
 .strength-option input[type="radio"] {
@@ -658,12 +730,46 @@ const close = () => {
 }
 
 .strength-option.active {
-  background: #23587b;
-  border-color: #23587b;
   color: white;
-  font-weight: 600;
+  border-color: transparent;
 }
 
+.strength-option.active .strength-label,
+.strength-option.active .strength-desc {
+  color: white;
+}
+
+.strength-option.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.strength-option.disabled.active {
+  opacity: 1;
+}
+
+.strength-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  line-height: 1.2;
+}
+
+.strength-desc {
+  font-size: 10px;
+  color: #999;
+  line-height: 1.2;
+}
+
+.hard-hint {
+  display: block;
+  font-size: 11px;
+  color: #999;
+  margin-top: 6px;
+  font-style: italic;
+}
+
+/* 距离选择 */
 .distance-select {
   padding: 6px 10px;
   border: 2px solid #e0e0e0;
@@ -678,10 +784,12 @@ const close = () => {
 }
 
 .distance-hint {
-  font-size: 12px;
+  font-size: 11px;
   color: #999;
+  margin-left: 8px;
 }
 
+/* 冲突警告 */
 .conflict-warning {
   background: #fff3cd;
   border: 1px solid #ffc107;
@@ -692,9 +800,10 @@ const close = () => {
   color: #856404;
 }
 
+/* 添加按钮 */
 .add-relation-btn {
   width: 100%;
-  padding: 12px;
+  padding: 11px;
   color: white;
   border: none;
   border-radius: 6px;
@@ -702,44 +811,42 @@ const close = () => {
   font-size: 14px;
   font-weight: 600;
   transition: all 0.2s;
+  background: #ccc;
 }
 
-.add-relation-btn.btn-attraction {
-  background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
-}
-
-.add-relation-btn.btn-attraction:hover:not(:disabled) {
-  background: linear-gradient(135deg, #45a049 0%, #3d8b40 100%);
-}
-
-.add-relation-btn.btn-repulsion {
-  background: linear-gradient(135deg, #F44336 0%, #d32f2f 100%);
-}
-
-.add-relation-btn.btn-repulsion:hover:not(:disabled) {
-  background: linear-gradient(135deg, #d32f2f 0%, #c62828 100%);
+.add-relation-btn:hover:not(:disabled) {
+  filter: brightness(0.9);
+  transform: translateY(-1px);
 }
 
 .add-relation-btn:disabled {
   background: #ccc !important;
   cursor: not-allowed;
+  transform: none !important;
 }
 
+/* ==================== Modal Footer ==================== */
 .modal-footer {
-  padding: 16px 24px;
+  padding: 14px 24px;
   border-top: 2px solid #e0e0e0;
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.footer-stats {
+  font-size: 12px;
+  color: #999;
 }
 
 .btn-secondary {
-  padding: 10px 20px;
+  padding: 9px 18px;
   background: #f0f0f0;
   color: #333;
   border: none;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   transition: all 0.2s;
 }
@@ -748,7 +855,7 @@ const close = () => {
   background: #e0e0e0;
 }
 
-/* 响应式设计 - 移动设备 */
+/* ==================== 响应式 ==================== */
 @media (max-width: 768px) {
   .modal-container {
     width: 95%;
@@ -767,44 +874,43 @@ const close = () => {
     padding: 16px 18px;
   }
 
-  .form-row {
+  .type-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .student-row {
     flex-direction: column;
-    gap: 10px;
-  }
-
-  .relation-type-selector {
-    width: 100%;
-    justify-content: center;
-  }
-
-  .student-select {
-    width: 100%;
-  }
-
-  .option-row {
-    flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
     gap: 8px;
   }
 
+  .relation-arrow {
+    text-align: center;
+    padding: 0;
+  }
+
   .strength-selector {
-    width: 100%;
-    justify-content: flex-start;
+    flex-wrap: wrap;
   }
 
   .relation-item {
     flex-wrap: wrap;
-    gap: 8px;
-    padding: 10px 12px;
+    gap: 6px;
+    padding: 8px 10px;
   }
 
   .relation-students {
     width: 100%;
+    order: 1;
   }
 
-  .relation-info {
-    width: 100%;
-    justify-content: flex-start;
+  .relation-meta {
+    order: 2;
+  }
+
+  .delete-relation-btn {
+    order: 3;
+    margin-left: auto;
   }
 }
 
@@ -817,13 +923,33 @@ const close = () => {
     font-size: 14px;
   }
 
-  .radio-label {
-    padding: 6px 10px;
+  .type-card {
+    padding: 10px 4px;
+  }
+
+  .type-icon {
+    font-size: 18px;
+  }
+
+  .type-label {
+    font-size: 12px;
+  }
+
+  .type-desc {
+    font-size: 9px;
   }
 
   .strength-option {
-    padding: 5px 10px;
-    font-size: 12px;
+    padding: 6px 4px;
+  }
+
+  .strength-label {
+    font-size: 13px;
+  }
+
+  .option-row .distance-select,
+  .option-row .distance-hint {
+    display: inline;
   }
 }
 </style>

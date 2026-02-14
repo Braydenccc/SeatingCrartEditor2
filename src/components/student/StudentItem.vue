@@ -124,7 +124,9 @@ const handleTouchDragStart = (e) => {
       top: ${startY - 25}px;
       min-width: 80px;
       padding: 8px 16px;
-      background: rgba(35, 88, 123, 0.9);
+      background: rgba(35, 88, 123, 0.85);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
       color: white;
       border-radius: 10px;
       display: flex;
@@ -134,9 +136,19 @@ const handleTouchDragStart = (e) => {
       font-weight: 600;
       pointer-events: none;
       z-index: 9999;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.1);
+      transform: scale(0.8);
+      opacity: 0;
+      transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1), opacity 0.15s ease;
     `
     document.body.appendChild(touchPreviewEl)
+    // 触发入场动画
+    requestAnimationFrame(() => {
+      if (touchPreviewEl) {
+        touchPreviewEl.style.transform = 'scale(1)'
+        touchPreviewEl.style.opacity = '1'
+      }
+    })
     if (navigator.vibrate) navigator.vibrate(30)
   }, 300)
 }
@@ -149,6 +161,7 @@ const handleTouchDragMove = (e) => {
   e.preventDefault()
   const touch = e.touches[0]
   if (touchPreviewEl) {
+    touchPreviewEl.style.transition = 'none'
     touchPreviewEl.style.left = `${touch.clientX - 40}px`
     touchPreviewEl.style.top = `${touch.clientY - 25}px`
   }
@@ -723,8 +736,11 @@ const deleteHandler = () => {
 }
 
 .student-item.dragging {
-  opacity: 0.4;
-  transform: scale(0.97);
+  opacity: 0.35;
+  transform: scale(0.95);
   border-style: dashed;
+  border-color: #90a4ae;
+  filter: grayscale(0.4);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 </style>
