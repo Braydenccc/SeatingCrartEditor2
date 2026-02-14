@@ -72,7 +72,8 @@ const isPanning = ref(false)
 // ==================== 变换样式 ====================
 const chartTransformStyle = computed(() => ({
   transform: `translate(calc(-50% + ${panX.value}px), calc(-50% + ${panY.value}px)) scale(${scale.value})`,
-  transformOrigin: 'center center'
+  transformOrigin: 'center center',
+  willChange: 'transform' // 提示浏览器优化渲染
 }))
 
 // ==================== 自适应缩放 ====================
@@ -121,6 +122,27 @@ let startMouseY = 0
 let startPanX = 0
 let startPanY = 0
 let mouseMoved = false
+let panRafId = null
+
+// rAF 批量更新 pan（避免每次 mousemove 都触发 Vue 重新渲染）
+const schedulePanUpdate = (x, y) => {
+  if (panRafId) return // 已有待处理帧
+  panRafId = requestAnimationFrame(() => {
+    panRafId = null
+    panX.value = x
+    panY.value = y
+  })
+}
+
+// 立即刷新 pan（用于最终位置）
+const flushPan = (x, y) => {
+  if (panRafId) { cancelAnimationFrame(panRafId); panRafId = null }
+  panX.value = x
+  panY.value = y
+}
+
+let pendingPanX = 0
+let pendingPanY = 0
 
 const handleMouseDown = (e) => {
   // 不拦截对座位等可交互元素的点击
@@ -144,11 +166,15 @@ const handleMouseMove = (e) => {
     mouseMoved = true
     isPanning.value = true
   }
-  panX.value = startPanX + dx
-  panY.value = startPanY + dy
+  pendingPanX = startPanX + dx
+  pendingPanY = startPanY + dy
+  schedulePanUpdate(pendingPanX, pendingPanY)
 }
 
 const handleMouseUp = () => {
+  if (mouseDown && mouseMoved) {
+    flushPan(pendingPanX, pendingPanY)
+  }
   mouseDown = false
   isPanning.value = false
 }
@@ -176,6 +202,7 @@ let touchPanStartY = 0
 let touchStartPanX = 0
 let touchStartPanY = 0
 let touchMode = '' // 'pan' | 'pinch' | ''
+let touchRafId = null
 
 const getTouchDistance = (touches) => {
   const dx = touches[0].clientX - touches[1].clientX
@@ -203,23 +230,35 @@ const handleTouchMove = (e) => {
   if (touchMode === 'pinch' && e.touches.length === 2) {
     const currentDistance = getTouchDistance(e.touches)
     const ratio = currentDistance / lastTouchDistance
-    setScale(lastTouchScale * ratio)
+    const newScale = lastTouchScale * ratio
+    if (touchRafId) cancelAnimationFrame(touchRafId)
+    touchRafId = requestAnimationFrame(() => {
+      touchRafId = null
+      setScale(newScale)
+    })
   } else if (touchMode === 'pan' && e.touches.length === 1) {
     const dx = e.touches[0].clientX - touchPanStartX
     const dy = e.touches[0].clientY - touchPanStartY
-    panX.value = touchStartPanX + dx
-    panY.value = touchStartPanY + dy
+    pendingPanX = touchStartPanX + dx
+    pendingPanY = touchStartPanY + dy
     isPanning.value = true
+    schedulePanUpdate(pendingPanX, pendingPanY)
   }
 }
 
 const handleTouchEnd = () => {
+  if (touchMode === 'pan') {
+    flushPan(pendingPanX, pendingPanY)
+  }
+  if (touchRafId) { cancelAnimationFrame(touchRafId); touchRafId = null }
   touchMode = ''
   lastTouchDistance = 0
   isPanning.value = false
 }
 
 // ==================== 鼠标滚轮缩放 ====================
+let wheelRafId = null
+
 const handleWheel = (e) => {
   if (e.ctrlKey || e.metaKey) {
     // Ctrl+滚轮 = 缩放
@@ -229,9 +268,15 @@ const handleWheel = (e) => {
       zoomOut()
     }
   } else {
-    // 普通滚轮 = 平移
-    panX.value -= e.deltaX
-    panY.value -= e.deltaY
+    // 普通滚轮 = 平移（rAF 节流）
+    pendingPanX = panX.value - e.deltaX
+    pendingPanY = panY.value - e.deltaY
+    if (wheelRafId) cancelAnimationFrame(wheelRafId)
+    wheelRafId = requestAnimationFrame(() => {
+      wheelRafId = null
+      panX.value = pendingPanX
+      panY.value = pendingPanY
+    })
   }
 }
 

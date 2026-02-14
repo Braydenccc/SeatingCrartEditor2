@@ -82,6 +82,7 @@ const isStudentDragging = ref(false)
 let touchDragTimer = null
 let touchDragActive = false
 let touchPreviewEl = null
+let touchMoveRafId = null
 
 const canDrag = computed(() => {
   return currentMode.value === EditMode.NORMAL
@@ -124,9 +125,7 @@ const handleTouchDragStart = (e) => {
       top: ${startY - 25}px;
       min-width: 80px;
       padding: 8px 16px;
-      background: rgba(35, 88, 123, 0.85);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
+      background: rgba(35, 88, 123, 0.92);
       color: white;
       border-radius: 10px;
       display: flex;
@@ -136,9 +135,10 @@ const handleTouchDragStart = (e) => {
       font-weight: 600;
       pointer-events: none;
       z-index: 9999;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.1);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.25);
       transform: scale(0.8);
       opacity: 0;
+      will-change: transform, left, top;
       transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1), opacity 0.15s ease;
     `
     document.body.appendChild(touchPreviewEl)
@@ -160,23 +160,32 @@ const handleTouchDragMove = (e) => {
   }
   e.preventDefault()
   const touch = e.touches[0]
-  if (touchPreviewEl) {
-    touchPreviewEl.style.transition = 'none'
-    touchPreviewEl.style.left = `${touch.clientX - 40}px`
-    touchPreviewEl.style.top = `${touch.clientY - 25}px`
-  }
-  // 高亮目标座位
-  const el = document.elementFromPoint(touch.clientX, touch.clientY)
-  document.querySelectorAll('.seat-item.drag-over').forEach(s => s.classList.remove('drag-over'))
-  if (el) {
-    let cur = el
-    while (cur && !cur.dataset?.seatId) cur = cur.parentElement
-    if (cur) cur.classList.add('drag-over')
-  }
+  const cx = touch.clientX
+  const cy = touch.clientY
+
+  // rAF 节流：每帧最多更新一次
+  if (touchMoveRafId) cancelAnimationFrame(touchMoveRafId)
+  touchMoveRafId = requestAnimationFrame(() => {
+    touchMoveRafId = null
+    if (touchPreviewEl) {
+      touchPreviewEl.style.transition = 'none'
+      touchPreviewEl.style.left = `${cx - 40}px`
+      touchPreviewEl.style.top = `${cy - 25}px`
+    }
+    // 高亮目标座位
+    const el = document.elementFromPoint(cx, cy)
+    document.querySelectorAll('.seat-item.drag-over').forEach(s => s.classList.remove('drag-over'))
+    if (el) {
+      let cur = el
+      while (cur && !cur.dataset?.seatId) cur = cur.parentElement
+      if (cur) cur.classList.add('drag-over')
+    }
+  })
 }
 
 const handleTouchDragEnd = (e) => {
   if (touchDragTimer) { clearTimeout(touchDragTimer); touchDragTimer = null }
+  if (touchMoveRafId) { cancelAnimationFrame(touchMoveRafId); touchMoveRafId = null }
   if (!touchDragActive) return
 
   const touch = e.changedTouches[0]
@@ -387,6 +396,7 @@ const deleteHandler = () => {
 
 <style scoped>
 .student-item {
+  contain: layout style;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -740,7 +750,6 @@ const deleteHandler = () => {
   transform: scale(0.95);
   border-style: dashed;
   border-color: #90a4ae;
-  filter: grayscale(0.4);
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: opacity 0.25s ease, transform 0.25s ease;
 }
 </style>

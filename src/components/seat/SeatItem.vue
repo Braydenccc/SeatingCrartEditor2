@@ -51,6 +51,9 @@ let dragEnterCount = 0
 let touchDragTimer = null
 let touchDragActive = false
 let touchPreviewEl = null
+let touchMoveRafId = null
+let previewW = 0
+let previewH = 0
 
 // ==================== 计算属性 ====================
 
@@ -213,9 +216,7 @@ const handleTouchStart = (e) => {
       top: ${startY - rect.height / 2}px;
       width: ${rect.width}px;
       height: ${rect.height}px;
-      background: rgba(35, 88, 123, 0.85);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
+      background: rgba(35, 88, 123, 0.92);
       color: white;
       border-radius: 12px;
       display: flex;
@@ -225,11 +226,14 @@ const handleTouchStart = (e) => {
       font-weight: 600;
       pointer-events: none;
       z-index: 9999;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.1);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.25);
       transform: scale(0.85);
       opacity: 0;
+      will-change: transform, left, top;
       transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1), opacity 0.15s ease;
     `
+    previewW = rect.width
+    previewH = rect.height
     document.body.appendChild(touchPreviewEl)
     requestAnimationFrame(() => {
       if (touchPreviewEl) {
@@ -252,23 +256,29 @@ const handleTouchMove = (e) => {
   }
 
   const touch = e.touches[0]
-  if (touchPreviewEl) {
-    touchPreviewEl.style.transition = 'none'
-    const w = touchPreviewEl.offsetWidth
-    const h = touchPreviewEl.offsetHeight
-    touchPreviewEl.style.left = `${touch.clientX - w / 2}px`
-    touchPreviewEl.style.top = `${touch.clientY - h / 2}px`
-  }
+  const cx = touch.clientX
+  const cy = touch.clientY
 
-  // 高亮目标座位
-  const targetEl = document.elementFromPoint(touch.clientX, touch.clientY)
-  clearAllTouchHighlights()
-  if (targetEl) {
-    const seatEl = findParentSeat(targetEl)
-    if (seatEl && seatEl.dataset.seatId !== props.seat.id) {
-      seatEl.classList.add('drag-over')
+  // rAF 节流
+  if (touchMoveRafId) cancelAnimationFrame(touchMoveRafId)
+  touchMoveRafId = requestAnimationFrame(() => {
+    touchMoveRafId = null
+    if (touchPreviewEl) {
+      touchPreviewEl.style.transition = 'none'
+      touchPreviewEl.style.left = `${cx - previewW / 2}px`
+      touchPreviewEl.style.top = `${cy - previewH / 2}px`
     }
-  }
+
+    // 高亮目标座位
+    const targetEl = document.elementFromPoint(cx, cy)
+    clearAllTouchHighlights()
+    if (targetEl) {
+      const seatEl = findParentSeat(targetEl)
+      if (seatEl && seatEl.dataset.seatId !== props.seat.id) {
+        seatEl.classList.add('drag-over')
+      }
+    }
+  })
 }
 
 const handleTouchEnd = (e) => {
@@ -276,6 +286,7 @@ const handleTouchEnd = (e) => {
     clearTimeout(touchDragTimer)
     touchDragTimer = null
   }
+  if (touchMoveRafId) { cancelAnimationFrame(touchMoveRafId); touchMoveRafId = null }
 
   if (!touchDragActive) return
 
@@ -332,6 +343,7 @@ const clearAllTouchHighlights = () => {
   height: 80px;
   aspect-ratio: 3 / 4;
   border: 2px solid #d0d7dc;
+  contain: layout style;
   border-radius: 12px;
   display: flex;
   align-items: center;
@@ -368,26 +380,28 @@ const clearAllTouchHighlights = () => {
   transform: scale(0.92);
   border-style: dashed;
   border-color: #90a4ae;
-  filter: grayscale(0.4);
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: opacity 0.25s ease, transform 0.25s ease;
 }
 
 .seat-item.drag-over {
   border-color: #23587b;
   border-width: 2.5px;
-  background: linear-gradient(135deg, rgba(35, 88, 123, 0.06) 0%, rgba(35, 88, 123, 0.12) 100%);
-  box-shadow: 0 0 0 3px rgba(35, 88, 123, 0.15), 0 4px 16px rgba(35, 88, 123, 0.2);
+  background: rgba(35, 88, 123, 0.08);
+  outline: 3px solid rgba(35, 88, 123, 0.18);
+  outline-offset: 1px;
   transform: scale(1.04);
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
   animation: drag-over-pulse 1.2s ease-in-out infinite;
 }
 
 @keyframes drag-over-pulse {
   0%, 100% {
-    box-shadow: 0 0 0 3px rgba(35, 88, 123, 0.15), 0 4px 16px rgba(35, 88, 123, 0.2);
+    outline-width: 3px;
+    outline-color: rgba(35, 88, 123, 0.18);
   }
   50% {
-    box-shadow: 0 0 0 5px rgba(35, 88, 123, 0.1), 0 6px 24px rgba(35, 88, 123, 0.3);
+    outline-width: 5px;
+    outline-color: rgba(35, 88, 123, 0.28);
   }
 }
 
