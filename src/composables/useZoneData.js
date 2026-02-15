@@ -146,6 +146,13 @@ export function useZoneData() {
     })
   }
 
+  // 清空所有选区
+  const clearAllZones = () => {
+    zones.value = []
+    selectedZoneId.value = null
+    nextZoneId = 1
+  }
+
   return {
     zones,
     selectedZoneId,
@@ -164,6 +171,7 @@ export function useZoneData() {
     toggleZoneVisible,
     visibleZoneSeats,
     removeTagFromAllZones,
-    cleanupInvalidSeats
+    cleanupInvalidSeats,
+    clearAllZones
   }
 }

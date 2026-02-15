@@ -8,6 +8,12 @@ const exportSettings = ref({
   showGroupLabels: true,
   showPodium: true,
   enableTagLabels: true,
+  colorMode: 'color', // 'color' | 'bw' | 'pureBw'
+  // 间距设置
+  colGap: 20,      // 列间距
+  rowGap: 15,      // 行间距
+  groupGap: 60,    // 大组间距
+  padding: 40,     // 边距
   tagSettings: {} // 格式: { tagId: { enabled: true, displayText: '文本' } }
 })
 
@@ -42,6 +48,11 @@ export function useExportSettings() {
     exportSettings.value.enableTagLabels = enabled
   }
 
+  // 切换黑白/彩色模式
+  const toggleColorMode = (mode) => {
+    exportSettings.value.colorMode = mode
+  }
+
   // 更新单个标签设置
   const updateTagSetting = (tagId, setting) => {
     exportSettings.value.tagSettings[tagId] = setting
@@ -67,6 +78,7 @@ export function useExportSettings() {
     toggleGroupLabels,
     togglePodium,
     toggleTagLabels,
+    toggleColorMode,
     updateTagSetting,
     initializeTagSettings
   }

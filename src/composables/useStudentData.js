@@ -104,6 +104,7 @@ export function useStudentData() {
   const clearAllStudents = () => {
     students.value = []
     selectedStudentId.value = null
+    nextStudentId = 1
   }
 
   // 获取当前选中的学生

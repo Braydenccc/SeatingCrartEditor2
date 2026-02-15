@@ -112,60 +112,24 @@
         <!-- 导出座位表图片 -->
         <div class="option-content" :class="{ active: activeTab === 4 }">
           <div class="tab-header">
-            <h3>基础设置</h3>
+            <h3>导出图片</h3>
           </div>
           <div class="options-group">
-            <div class="input-group">
-              <label for="exportTitle">标题:</label>
-              <input id="exportTitle" v-model="exportSettings.title" type="text" placeholder="班级座位表" />
-            </div>
-            <label class="checkbox-label">
-              <input type="checkbox" v-model="exportSettings.showTitle" />
-              <span>显示标题</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" v-model="exportSettings.showRowNumbers" />
-              <span>显示行号</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" v-model="exportSettings.showGroupLabels" />
-              <span>显示组号</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" v-model="exportSettings.showPodium" />
-              <span>显示讲台</span>
-            </label>
+            <button class="option-button" @click="showExportDialog = true">
+              <span>导出设置</span>
+            </button>
           </div>
 
-          <div class="tab-header">
-            <h3>标签设置</h3>
-          </div>
-          <div class="options-group">
-            <label class="checkbox-label">
-              <input type="checkbox" v-model="exportSettings.enableTagLabels" />
-              <span>启用标签显示</span>
-            </label>
-
-            <div v-if="exportSettings.enableTagLabels && tags.length > 0 && Object.keys(tagSettingsLocal).length > 0"
-              class="tag-settings-list">
-              <div v-for="tag in tags" :key="tag.id" class="tag-setting-item">
-                <label class="tag-checkbox" v-if="tagSettingsLocal[tag.id]">
-                  <input type="checkbox" v-model="tagSettingsLocal[tag.id].enabled" @change="updateTagSettings()" />
-                  <span class="tag-color-dot" :style="{ backgroundColor: tag.color }"></span>
-                  <span>{{ tag.name }}</span>
-                </label>
-                <div v-if="tagSettingsLocal[tag.id] && tagSettingsLocal[tag.id].enabled">
-                  <p class="tag-display-text-label">导出时标签名称</p>
-                  <input type="text" v-model="tagSettingsLocal[tag.id].displayText" @blur="updateTagSettings()"
-                    class="tag-text-input" placeholder="显示文本" maxlength="4" />
-                </div>
-              </div>
+          <div class="options-group" v-if="lastExportUrl">
+            <p class="preview-label">上次导出预览</p>
+            <div class="export-thumbnail-wrap">
+              <img :src="lastExportUrl" alt="上次导出" class="export-thumbnail" @click="showExportDialog = true" />
             </div>
           </div>
 
           <div class="options-group">
-            <button class="option-button primary" @click="handleExportImage">
-              <span>导出为图片</span>
+            <button class="option-button primary" :disabled="isExporting" @click="handleQuickExport">
+              <span>{{ isExporting ? '正在生成...' : '导出' }}</span>
             </button>
           </div>
         </div>
@@ -192,6 +156,9 @@
     </div>
   </div>
 
+  <!-- 导出设置弹窗 -->
+  <ExportDialog :visible="showExportDialog" @close="showExportDialog = false" @exported="onExported" />
+
   <!-- 座位联系编辑器模态框 -->
   <SeatRelationEditor :visible="showRelationEditor" @close="showRelationEditor = false" />
 </template>
@@ -211,8 +178,10 @@ import { useWorkspace } from '@/composables/useWorkspace'
 import { useLogger } from '@/composables/useLogger'
 import { useConfirmAction } from '@/composables/useConfirmAction'
 import { useSeatRelation } from '@/composables/useSeatRelation'
+import { useZoneData } from '@/composables/useZoneData'
 import ZoneList from '../zone/ZoneList.vue'
 import SeatRelationEditor from '../relation/SeatRelationEditor.vue'
+import ExportDialog from './ExportPreview.vue'
 
 const { activeTab, setActiveTab } = useSidebar()
 const { seatConfig, updateConfig, clearAllSeats, seats } = useSeatChart()
@@ -220,7 +189,7 @@ const { currentMode, setMode, toggleEmptyEditMode, EditMode } = useEditMode()
 const { isAssigning, runAssignment } = useAssignment()
 const { tags, addTag, clearAllTags } = useTagData()
 const { students, addStudent, updateStudent, clearAllStudents } = useStudentData()
-const { exportSettings, initializeTagSettings, updateTagSetting } = useExportSettings()
+const { exportSettings } = useExportSettings()
 const { exportToImage } = useImageExport()
 const { downloadTemplate, importFromExcel, exportToExcel } = useExcelData()
 const { saveWorkspace, loadWorkspace } = useWorkspace()
@@ -253,6 +222,16 @@ const excelInput = ref(null)
 
 // 标签设置本地副本
 const tagSettingsLocal = ref({})
+
+// 导出弹窗状态
+const showExportDialog = ref(false)
+const lastExportUrl = ref('')
+const isExporting = ref(false)
+
+// 导出完成回调
+const onExported = (url) => {
+  lastExportUrl.value = url
+}
 
 // 工作区管理
 const handleSaveWorkspace = () => {
@@ -355,6 +334,36 @@ const handleLoadWorkspace = async (event) => {
         })
       }
 
+      // 恢复选区数据
+      if (workspace.zones && Array.isArray(workspace.zones)) {
+        const { clearAllZones, addZone, updateZone } = useZoneData()
+        clearAllZones()
+
+        // 获取已有的 tagIds 映射（标签使用 addTag 自增 ID，需要重新映射）
+        const oldTagIdToNewId = {}
+        if (workspace.tags && Array.isArray(workspace.tags)) {
+          workspace.tags.forEach((t, index) => {
+            // tags 已经按顺序恢复，新 ID = tags[index].id
+            if (tags.value[index]) {
+              oldTagIdToNewId[t.id] = tags.value[index].id
+            }
+          })
+        }
+
+        workspace.zones.forEach(z => {
+          const newZone = addZone()
+          const mappedTagIds = z.tagIds
+            .map(tid => oldTagIdToNewId[tid])
+            .filter(id => id !== undefined)
+          updateZone(newZone.id, {
+            name: z.name,
+            tagIds: mappedTagIds,
+            seatIds: [...z.seatIds],
+            visible: z.visible !== undefined ? z.visible : false
+          })
+        })
+      }
+
       success('工作区加载并恢复成功！')
     } catch (err) {
       error('恢复工作区时发生错误: ' + (err.message || err))
@@ -438,54 +447,37 @@ const handleExportExcel = () => {
   }
 }
 
-// 初始化标签设置
-const initTagSettingsLocal = () => {
-  // 为所有标签创建设置
-  const newSettings = {}
-  tags.value.forEach(tag => {
-    newSettings[tag.id] = {
-      enabled: exportSettings.value.tagSettings[tag.id]?.enabled ?? true,
-      displayText: exportSettings.value.tagSettings[tag.id]?.displayText ?? tag.name.substring(0, 2)
-    }
-  })
-  tagSettingsLocal.value = newSettings
-}
-
-// 监听tags变化，动态更新标签设置
-watch(tags, () => {
-  initializeTagSettings(tags.value)
-  initTagSettingsLocal()
-}, { deep: true })
-
 // 初始化时从 seatConfig 读取当前配置
 onMounted(() => {
   configForm.value = { ...seatConfig.value }
-
-  // 初始化标签设置
-  initializeTagSettings(tags.value)
-  initTagSettingsLocal()
 })
 
-// 更新标签设置到store
-const updateTagSettings = () => {
-  Object.keys(tagSettingsLocal.value).forEach(tagId => {
-    updateTagSetting(parseInt(tagId), tagSettingsLocal.value[tagId])
-  })
-}
-
-// 导出图片
-const handleExportImage = () => {
-  // 检查是否有座位数据
+// 快速导出（侧边栏按钮）
+const handleQuickExport = async () => {
   if (!seatConfig.value || seatConfig.value.groupCount === 0) {
     warning('请先配置座位表')
     return
   }
 
+  isExporting.value = true
   try {
-    exportToImage()
+    const dataUrl = await exportToImage()
+    lastExportUrl.value = dataUrl
+
+    // 自动下载
+    const link = document.createElement('a')
+    link.href = dataUrl
+    const ts = new Date().toISOString().slice(0, 19).replace(/:/g, '-')
+    link.download = `座位表_${ts}.png`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+
     success('图片导出成功！')
   } catch (err) {
     error(`导出失败: ${err.message || '未知错误'}`)
+  } finally {
+    isExporting.value = false
   }
 }
 
@@ -1040,6 +1032,57 @@ const formatLogTime = (timestamp) => {
   color: #999;
 }
 
+/* 间距设置网格 */
+.spacing-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.input-group.compact {
+  gap: 4px;
+}
+
+.input-group.compact label {
+  font-size: 12px;
+}
+
+.input-group.compact input[type="number"] {
+  padding: 6px 8px;
+  font-size: 13px;
+}
+
+/* 黑白/彩色切换 */
+.color-mode-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: #f8f9fa;
+  border-radius: 6px;
+}
+
+.color-mode-label {
+  font-size: 14px;
+  color: #555;
+  font-weight: 500;
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #555;
+}
+
+.radio-label input[type="radio"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
 /* 日志区域样式 */
 .log-area {
   border-top: 1px solid #e0e0e0;
@@ -1049,6 +1092,33 @@ const formatLogTime = (timestamp) => {
   height: 200px;
   min-height: 200px;
   max-height: 200px;
+}
+
+/* 导出缩略图 */
+.preview-label {
+  font-size: 12px;
+  color: #888;
+  margin: 0 0 6px 0;
+}
+
+.export-thumbnail-wrap {
+  background: #f5f5f5;
+  border-radius: 8px;
+  padding: 10px;
+  border: 1px solid #e8eef2;
+  text-align: center;
+}
+
+.export-thumbnail {
+  max-width: 100%;
+  max-height: 180px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.export-thumbnail:hover {
+  opacity: 0.8;
 }
 
 /* 响应式设计 - 移动设备 */

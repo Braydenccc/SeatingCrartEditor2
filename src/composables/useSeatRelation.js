@@ -278,43 +278,6 @@ export function useSeatRelation() {
     return relations.value
   }
 
-  // ==================== 向后兼容 API ====================
-
-  /**
-   * @deprecated 使用 addRelation(..., RelationType.ATTRACTION) 代替
-   * 为向后兼容保留的旧API
-   */
-  const addBinding = (studentId1, studentId2) => {
-    console.warn('[useSeatRelation] addBinding() is deprecated. Use addRelation() instead.')
-    return addRelation(studentId1, studentId2, RelationType.ATTRACTION, RelationStrength.HIGH)
-  }
-
-  /**
-   * @deprecated 使用 deleteRelation() 代替
-   */
-  const deleteBinding = (relationId) => {
-    console.warn('[useSeatRelation] deleteBinding() is deprecated. Use deleteRelation() instead.')
-    deleteRelation(relationId)
-  }
-
-  /**
-   * @deprecated 使用 findRelationsForStudent() 代替
-   */
-  const findBindingForStudent = (studentId) => {
-    console.warn('[useSeatRelation] findBindingForStudent() is deprecated. Use findRelationsForStudent() instead.')
-    const relations = findRelationsForStudent(studentId, RelationType.ATTRACTION)
-    return relations.length > 0 ? relations[0] : null
-  }
-
-  /**
-   * @deprecated 使用 getRelationPartners() 代替
-   */
-  const getPartner = (studentId) => {
-    console.warn('[useSeatRelation] getPartner() is deprecated. Use getRelationPartners() instead.')
-    const partners = getRelationPartners(studentId, RelationType.ATTRACTION)
-    return partners.length > 0 ? partners[0] : null
-  }
-
   // 返回所有公开API
   return {
     // 状态
@@ -343,17 +306,6 @@ export function useSeatRelation() {
     // 清理
     cleanupInvalidRelations,
     clearAllRelations,
-    getAllRelations,
-
-    // 向后兼容API（废弃）
-    bindings: relations, // 别名
-    addBinding,
-    deleteBinding,
-    findBindingForStudent,
-    getPartner,
-    hasBinding: hasRelation,
-    cleanupInvalidBindings: cleanupInvalidRelations,
-    getAllBindings: getAllRelations,
-    clearAllBindings: clearAllRelations
+    getAllRelations
   }
 }

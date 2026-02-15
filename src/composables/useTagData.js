@@ -48,6 +48,7 @@ export function useTagData() {
   // 清除所有标签
   const clearAllTags = () => {
     tags.value = []
+    nextTagId = 1
     colorIndex = 0
   }
 

@@ -3,6 +3,7 @@ import { useTagData } from './useTagData'
 import { useSeatChart } from './useSeatChart'
 import { useExportSettings } from './useExportSettings'
 import { useSeatRelation } from './useSeatRelation'
+import { useZoneData } from './useZoneData'
 import { RelationType, RelationStrength } from '../constants/relationTypes.js'
 
 export function useWorkspace() {
@@ -11,6 +12,7 @@ export function useWorkspace() {
   const { seatConfig, seats } = useSeatChart()
   const { exportSettings } = useExportSettings()
   const { relations } = useSeatRelation()
+  const { zones } = useZoneData()
 
   // 保存工作区
   const saveWorkspace = () => {
@@ -47,6 +49,14 @@ export function useWorkspace() {
           relationType: r.relationType,
           strength: r.strength || 'high',
           metadata: r.metadata || {}
+        })),
+        // 新增：保存选区数据
+        zones: zones.value.map(z => ({
+          id: z.id,
+          name: z.name,
+          tagIds: [...z.tagIds],
+          seatIds: [...z.seatIds],
+          visible: z.visible
         }))
       }
 

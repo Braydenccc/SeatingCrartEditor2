@@ -10,6 +10,9 @@ const seatConfig = ref({
 // 座位数据
 const seats = ref([])
 
+// 座位查找索引 (id -> seat object)，O(1) 查找替代 .find()
+let seatMap = new Map()
+
 // 生成座位ID
 function generateSeatId(groupIndex, columnIndex, rowIndex) {
   return `seat-${groupIndex}-${columnIndex}-${rowIndex}`
@@ -18,40 +21,48 @@ function generateSeatId(groupIndex, columnIndex, rowIndex) {
 // 初始化座位表
 function initializeSeats() {
   const newSeats = []
+  const newMap = new Map()
   const { groupCount, columnsPerGroup, seatsPerColumn } = seatConfig.value
 
   for (let g = 0; g < groupCount; g++) {
     for (let c = 0; c < columnsPerGroup; c++) {
       for (let r = 0; r < seatsPerColumn; r++) {
-        newSeats.push({
+        const seat = {
           id: generateSeatId(g, c, r),
           groupIndex: g,
           columnIndex: c,
           rowIndex: r,
           studentId: null,
           isEmpty: false
-        })
+        }
+        newSeats.push(seat)
+        newMap.set(seat.id, seat)
       }
     }
   }
 
   seats.value = newSeats
+  seatMap = newMap
 }
 
-// 按组和列组织座位数据（用于渲染）
+// 按组和列组织座位数据（用于渲染）— 单遍分桶，O(n)
 const organizedSeats = computed(() => {
   const { groupCount, columnsPerGroup } = seatConfig.value
-  const groups = []
+  // 预分配结构
+  const groups = Array.from({ length: groupCount }, () =>
+    Array.from({ length: columnsPerGroup }, () => [])
+  )
 
-  for (let g = 0; g < groupCount; g++) {
-    const columns = []
-    for (let c = 0; c < columnsPerGroup; c++) {
-      const columnSeats = seats.value.filter(
-        seat => seat.groupIndex === g && seat.columnIndex === c
-      ).sort((a, b) => a.rowIndex - b.rowIndex)
-      columns.push(columnSeats)
+  // 单次遍历分桶
+  for (const seat of seats.value) {
+    groups[seat.groupIndex][seat.columnIndex].push(seat)
+  }
+
+  // 每个桶按 rowIndex 排序
+  for (const group of groups) {
+    for (const col of group) {
+      col.sort((a, b) => a.rowIndex - b.rowIndex)
     }
-    groups.push(columns)
   }
 
   return groups
@@ -60,7 +71,7 @@ const organizedSeats = computed(() => {
 export function useSeatChart() {
   // 分配学生到座位
   const assignStudent = (seatId, studentId) => {
-    const seat = seats.value.find(s => s.id === seatId)
+    const seat = seatMap.get(seatId)
     if (seat && !seat.isEmpty) {
       seat.studentId = studentId
       return true
@@ -70,7 +81,7 @@ export function useSeatChart() {
 
   // 切换空置状态
   const toggleEmpty = (seatId) => {
-    const seat = seats.value.find(s => s.id === seatId)
+    const seat = seatMap.get(seatId)
     if (seat) {
       seat.isEmpty = !seat.isEmpty
       if (seat.isEmpty) {
@@ -81,7 +92,7 @@ export function useSeatChart() {
 
   // 清空座位
   const clearSeat = (seatId) => {
-    const seat = seats.value.find(s => s.id === seatId)
+    const seat = seatMap.get(seatId)
     if (seat) {
       seat.studentId = null
     }
@@ -89,8 +100,8 @@ export function useSeatChart() {
 
   // 交换两个座位的学生
   const swapSeats = (seatId1, seatId2) => {
-    const seat1 = seats.value.find(s => s.id === seatId1)
-    const seat2 = seats.value.find(s => s.id === seatId2)
+    const seat1 = seatMap.get(seatId1)
+    const seat2 = seatMap.get(seatId2)
     if (seat1 && seat2) {
       const temp = seat1.studentId
       seat1.studentId = seat2.studentId
@@ -106,7 +117,7 @@ export function useSeatChart() {
 
   // 获取座位上的学生ID
   const getStudentAtSeat = (seatId) => {
-    const seat = seats.value.find(s => s.id === seatId)
+    const seat = seatMap.get(seatId)
     return seat ? seat.studentId : null
   }
 

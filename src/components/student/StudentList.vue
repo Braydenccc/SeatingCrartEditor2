@@ -53,6 +53,7 @@ import { useTagData, initializeTags } from '@/composables/useTagData'
 import { useStudentData } from '@/composables/useStudentData'
 import { useZoneData } from '@/composables/useZoneData'
 import { useSeatRelation } from '@/composables/useSeatRelation'
+import { useExportSettings } from '@/composables/useExportSettings'
 
 // 初始化数据
 onMounted(() => {
@@ -64,6 +65,7 @@ const { tags, addTag, editTag, deleteTag } = useTagData()
 const { students, addStudent, setStudentCount, updateStudent, deleteStudent, removeTagFromStudents } = useStudentData()
 const { removeTagFromAllZones } = useZoneData()
 const { cleanupInvalidRelations } = useSeatRelation()
+const { exportSettings } = useExportSettings()
 
 // 学生人数控制
 const targetStudentCount = ref(0)
@@ -108,6 +110,8 @@ const handleDeleteTag = (tagId) => {
   removeTagFromStudents(tagId)
   // 从所有选区中移除该标签
   removeTagFromAllZones(tagId)
+  // 清理导出设置中的残留条目
+  delete exportSettings.value.tagSettings[tagId]
   // 再删除标签
   deleteTag(tagId)
 }
