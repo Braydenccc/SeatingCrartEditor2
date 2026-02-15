@@ -21,27 +21,33 @@ function generateSeatId(groupIndex, columnIndex, rowIndex) {
 // 初始化座位表
 function initializeSeats() {
   const newSeats = []
-  const newMap = new Map()
   const { groupCount, columnsPerGroup, seatsPerColumn } = seatConfig.value
 
   for (let g = 0; g < groupCount; g++) {
     for (let c = 0; c < columnsPerGroup; c++) {
       for (let r = 0; r < seatsPerColumn; r++) {
-        const seat = {
+        newSeats.push({
           id: generateSeatId(g, c, r),
           groupIndex: g,
           columnIndex: c,
           rowIndex: r,
           studentId: null,
           isEmpty: false
-        }
-        newSeats.push(seat)
-        newMap.set(seat.id, seat)
+        })
       }
     }
   }
 
   seats.value = newSeats
+  rebuildSeatMap()
+}
+
+// 从 seats.value（响应式代理）重建索引，确保 Map 持有代理对象
+function rebuildSeatMap() {
+  const newMap = new Map()
+  for (const seat of seats.value) {
+    newMap.set(seat.id, seat)
+  }
   seatMap = newMap
 }
 
