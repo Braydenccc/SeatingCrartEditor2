@@ -29,6 +29,17 @@ export function useImageExport() {
     return luminance > 0.5 ? '#000000' : '#ffffff'
   }
 
+  // 灰度转 hex（用于对比度计算）
+  function toGrayscaleHex(hexColor) {
+    const hex = hexColor.replace('#', '')
+    const r = parseInt(hex.substring(0, 2), 16)
+    const g = parseInt(hex.substring(2, 4), 16)
+    const b = parseInt(hex.substring(4, 6), 16)
+    const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b)
+    const grayHex = gray.toString(16).padStart(2, '0')
+    return `#${grayHex}${grayHex}${grayHex}`
+  }
+
   // 绘制圆角矩形
   function drawRoundRect(ctx, x, y, w, h, r) {
     ctx.beginPath()
@@ -60,29 +71,48 @@ export function useImageExport() {
         const GROUP_LABEL_HEIGHT = exportSettings.value.showGroupLabels ? 50 : 0
         const PODIUM_HEIGHT = exportSettings.value.showPodium ? 60 : 0
 
-        // 计算画布尺寸
+        // 计算内容尺寸
         const groupWidth = seatConfig.value.columnsPerGroup * SEAT_WIDTH +
           (seatConfig.value.columnsPerGroup - 1) * COL_GAP
-        const canvasWidth = ROW_NUMBER_WIDTH * 2 +
+        const contentWidth = ROW_NUMBER_WIDTH * 2 +
           seatConfig.value.groupCount * groupWidth +
           (seatConfig.value.groupCount - 1) * GROUP_GAP +
           2 * PADDING
-        const canvasHeight = TITLE_HEIGHT +
+        const contentHeight = TITLE_HEIGHT +
           seatConfig.value.seatsPerColumn * SEAT_HEIGHT +
           (seatConfig.value.seatsPerColumn - 1) * ROW_GAP +
           GROUP_LABEL_HEIGHT +
           PODIUM_HEIGHT +
           2 * PADDING
 
-        // 高分辨率
-        const scale = 2
-        canvas.width = canvasWidth * scale
-        canvas.height = canvasHeight * scale
-        ctx.scale(scale, scale)
+        // A4 尺寸 (300 DPI): 2480 × 3508
+        const A4_SHORT = 2480
+        const A4_LONG = 3508
+        // 根据内容比例自动选择横/纵向
+        const isLandscape = contentWidth / contentHeight > 1
+        const canvasWidth = isLandscape ? A4_LONG : A4_SHORT
+        const canvasHeight = isLandscape ? A4_SHORT : A4_LONG
+
+        canvas.width = canvasWidth
+        canvas.height = canvasHeight
 
         // 白色背景
         ctx.fillStyle = 'white'
         ctx.fillRect(0, 0, canvasWidth, canvasHeight)
+
+        // 计算缩放使内容适配 A4（留 5% 页边距）
+        const A4_MARGIN = 0.05
+        const availW = canvasWidth * (1 - 2 * A4_MARGIN)
+        const availH = canvasHeight * (1 - 2 * A4_MARGIN)
+        const fitScale = Math.min(availW / contentWidth, availH / contentHeight)
+
+        // 居中偏移
+        const offsetX = (canvasWidth - contentWidth * fitScale) / 2
+        const offsetY = (canvasHeight - contentHeight * fitScale) / 2
+
+        ctx.save()
+        ctx.translate(offsetX, offsetY)
+        ctx.scale(fitScale, fitScale)
 
         // 颜色变量
         const primaryColor = isBW ? '#333333' : '#23587b'
@@ -92,11 +122,11 @@ export function useImageExport() {
 
         // 绘制标题
         if (exportSettings.value.showTitle) {
-          ctx.fillStyle = isBW ? 'black' : 'black'
+          ctx.fillStyle = 'black'
           ctx.font = 'bold 28px Microsoft YaHei, Arial, sans-serif'
           ctx.textAlign = 'center'
           ctx.textBaseline = 'middle'
-          ctx.fillText(exportSettings.value.title, canvasWidth / 2, PADDING + 20)
+          ctx.fillText(exportSettings.value.title, contentWidth / 2, PADDING + 20)
         }
 
         // 座位表起始位置
@@ -118,7 +148,7 @@ export function useImageExport() {
             ctx.fillText(rowNumber.toString(), PADDING + ROW_NUMBER_WIDTH / 2, rowY)
 
             // 右侧行号
-            ctx.fillText(rowNumber.toString(), canvasWidth - PADDING - ROW_NUMBER_WIDTH / 2, rowY)
+            ctx.fillText(rowNumber.toString(), contentWidth - PADDING - ROW_NUMBER_WIDTH / 2, rowY)
           }
         }
 
@@ -160,9 +190,9 @@ export function useImageExport() {
 
         // 绘制讲台
         if (exportSettings.value.showPodium) {
-          const podiumY = canvasHeight - PADDING - PODIUM_HEIGHT + 10
+          const podiumY = contentHeight - PADDING - PODIUM_HEIGHT + 10
           const podiumWidth = SEAT_WIDTH * 4 + COL_GAP * 3
-          const podiumX = (canvasWidth - podiumWidth) / 2
+          const podiumX = (contentWidth - podiumWidth) / 2
 
           ctx.strokeStyle = primaryColor
           ctx.lineWidth = 3
@@ -175,6 +205,8 @@ export function useImageExport() {
           ctx.textBaseline = 'middle'
           ctx.fillText('讲台', podiumX + podiumWidth / 2, podiumY + 20)
         }
+
+        ctx.restore()
 
         // 转为 data URL
         resolve(canvas.toDataURL('image/png'))
@@ -212,7 +244,7 @@ export function useImageExport() {
       const student = students.value.find(s => s.id === seat.studentId)
       if (student) {
         // 绘制姓名
-        ctx.fillStyle = isBW ? 'black' : 'black'
+        ctx.fillStyle = 'black'
         ctx.font = 'bold 24px Microsoft YaHei, Arial, sans-serif'
         ctx.textAlign = 'center'
         ctx.textBaseline = 'middle'
@@ -318,17 +350,6 @@ export function useImageExport() {
     })
 
     ctx.restore()
-  }
-
-  // 灰度转 hex（用于对比度计算）
-  function toGrayscaleHex(hexColor) {
-    const hex = hexColor.replace('#', '')
-    const r = parseInt(hex.substring(0, 2), 16)
-    const g = parseInt(hex.substring(2, 4), 16)
-    const b = parseInt(hex.substring(4, 6), 16)
-    const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b)
-    const grayHex = gray.toString(16).padStart(2, '0')
-    return `#${grayHex}${grayHex}${grayHex}`
   }
 
   return {

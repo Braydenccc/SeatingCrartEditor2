@@ -102,7 +102,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useExportSettings } from '@/composables/useExportSettings'
 import { useImageExport } from '@/composables/useImageExport'
 import { useTagData } from '@/composables/useTagData'
@@ -134,11 +134,13 @@ const initTagLocal = () => {
   tagSettingsLocal.value = s
 }
 
-// 同步标签设置到 store
+// 同步标签设置到 store，并触发预览刷新
 const syncTagSettings = () => {
   Object.keys(tagSettingsLocal.value).forEach(tagId => {
     updateTagSetting(parseInt(tagId), tagSettingsLocal.value[tagId])
   })
+  // 手动触发预览更新（deep watch 不一定能捕获对 tagSettings 的就地修改）
+  generatePreview()
 }
 
 // 生成预览（防抖）
@@ -221,6 +223,10 @@ onMounted(() => {
   initializeTagSettings(tags.value)
   initTagLocal()
 })
+
+onBeforeUnmount(() => {
+  if (debounceTimer) clearTimeout(debounceTimer)
+})
 </script>
 
 <style scoped>
@@ -247,7 +253,7 @@ onMounted(() => {
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
   display: flex;
   flex-direction: column;
-  width: 900px;
+  width: 1100px;
   max-width: 95vw;
   max-height: 90vh;
   animation: slideUp 0.2s ease;

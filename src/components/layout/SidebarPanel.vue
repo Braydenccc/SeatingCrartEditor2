@@ -14,7 +14,7 @@
             <h3>工作区管理</h3>
           </div>
           <div class="options-group">
-            <input ref="workspaceInput" type="file" accept=".bydsce.json" style="display: none"
+            <input ref="workspaceInput" type="file" accept=".sce,.bydsce.json" style="display: none"
               @change="handleLoadWorkspace" />
             <button class="option-button" @click="$refs.workspaceInput.click()">
               <span>加载工作区</span>
@@ -285,21 +285,21 @@ const handleLoadWorkspace = async (event) => {
       })
 
       // 恢复座位配置
-      if (workspace.seatConfig) {
-        updateConfig(workspace.seatConfig)
+      if (workspace.layout && workspace.layout.config) {
+        updateConfig(workspace.layout.config)
       }
 
       // 等待 seats 初始化后恢复座位分配
       // 清空所有分配
       clearAllSeats()
 
-      if (workspace.seats && Array.isArray(workspace.seats)) {
-        workspace.seats.forEach(sw => {
+      if (workspace.layout && Array.isArray(workspace.layout.seats)) {
+        workspace.layout.seats.forEach(sw => {
           const match = seats.value.find(st =>
-            st.groupIndex === sw.groupIndex && st.columnIndex === sw.columnIndex && st.rowIndex === sw.rowIndex
+            st.groupIndex === sw.group && st.columnIndex === sw.col && st.rowIndex === sw.row
           )
           if (match) {
-            match.isEmpty = !!sw.isEmpty
+            match.isEmpty = !!sw.empty
             match.studentId = sw.studentId != null ? (oldStudentIdToNewId[sw.studentId] || null) : null
           }
         })
@@ -318,17 +318,17 @@ const handleLoadWorkspace = async (event) => {
         clearAllRelations()
 
         workspace.relations.forEach(r => {
-          const newStudentId1 = oldStudentIdToNewId[r.studentId1]
-          const newStudentId2 = oldStudentIdToNewId[r.studentId2]
+          const newStudentId1 = oldStudentIdToNewId[r.s1]
+          const newStudentId2 = oldStudentIdToNewId[r.s2]
 
           // 只有当两个学生都成功映射时才恢复联系
           if (newStudentId1 && newStudentId2) {
             addRelation(
               newStudentId1,
               newStudentId2,
-              r.relationType,
+              r.type,
               r.strength || 'high',
-              r.metadata || {}
+              r.meta || {}
             )
           }
         })
