@@ -40,7 +40,11 @@ import SidebarPanel from './components/layout/SidebarPanel.vue'
 /* 移动设备优化 */
 @media (max-width: 768px) {
   .main-content {
-    min-height: calc(100vh - 80px);
+    min-height: calc(100vh - 48px);
+    max-height: calc(100vh - 48px);
+    overflow: hidden;
+    /* 底部 tab 栏高度由 SidebarPanel 通过 fixed 定位提供 */
+    padding-bottom: 56px;
   }
 }
 </style>

@@ -62,34 +62,29 @@ import SeatChart from '../seat/SeatChart.vue'
   }
 }
 
-/* 响应式设计 - 移动设备 */
+/* 响应式设计 - 移动设备
+   可用高度 = 100vh - 48px(header) - 56px(tab bar) = 100vh - 104px
+   座位图 50%，学生列表 50%，直接用 calc 算出像素值，不依赖任何链 */
 @media (max-width: 768px) {
   .editor-panel {
-    min-height: auto;
+    width: 100%;
+    overflow: hidden;
   }
 
   .editor {
     flex: none;
-    min-height: 280px;
-    height: 45vh;
+    height: calc((100vh - 104px) * 0.5);
+    min-height: unset;
+    background: #ffffff;
+    overflow: hidden;
+    border-bottom: 1px solid #e0e0e0;
   }
 
   .student-list-area {
     flex: none;
-    min-height: 250px;
-    height: auto;
-  }
-}
-
-/* 超小屏幕 */
-@media (max-width: 480px) {
-  .editor {
-    min-height: 220px;
-    height: 40vh;
-  }
-
-  .student-list-area {
-    min-height: 200px;
+    height: calc((100vh - 104px) * 0.5);
+    min-height: unset;
+    overflow: hidden;
   }
 }
 </style>

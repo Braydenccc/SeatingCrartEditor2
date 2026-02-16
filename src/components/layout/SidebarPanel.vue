@@ -1,9 +1,15 @@
 <template>
-  <div class="sidebar-panel">
+  <!-- 移动端遮罩 -->
+  <Transition name="overlay-fade">
+    <div v-if="mobileMenuOpen" class="mobile-overlay" @click="closeMobileMenu"></div>
+  </Transition>
+
+  <div class="sidebar-panel" :class="{ 'mobile-menu-open': mobileMenuOpen }">
     <div class="sidebar-main">
       <div class="tabs-bar">
         <button v-for="tab in tabs" :key="tab.id" class="tab-button" :class="{ active: activeTab === tab.id }"
           @click="setActiveTab(tab.id)">
+          <span class="tab-icon">{{ tab.icon }}</span>
           <span class="tab-label">{{ tab.label }}</span>
         </button>
       </div>
@@ -183,7 +189,7 @@ import ZoneList from '../zone/ZoneList.vue'
 import SeatRelationEditor from '../relation/SeatRelationEditor.vue'
 import ExportDialog from './ExportPreview.vue'
 
-const { activeTab, setActiveTab } = useSidebar()
+const { activeTab, mobileMenuOpen, setActiveTab, closeMobileMenu } = useSidebar()
 const { seatConfig, updateConfig, clearAllSeats, seats } = useSeatChart()
 const { currentMode, setMode, toggleEmptyEditMode, EditMode } = useEditMode()
 const { isAssigning, runAssignment } = useAssignment()
@@ -197,10 +203,10 @@ const { logs, success, warning, error, clearLogs } = useLogger()
 const { requestConfirm, isConfirming } = useConfirmAction()
 
 const tabs = [
-  { id: 1, label: '文件' },
-  { id: 2, label: '编辑' },
-  { id: 3, label: '排位' },
-  { id: 4, label: '导出' }
+  { id: 1, label: '文件', icon: '📁' },
+  { id: 2, label: '编辑', icon: '✏️' },
+  { id: 3, label: '排位', icon: '🔀' },
+  { id: 4, label: '导出', icon: '📤' }
 ]
 
 // 座位配置表单
@@ -1216,5 +1222,220 @@ const formatLogTime = (timestamp) => {
   color: #999;
   padding: 20px;
   font-size: 13px;
+}
+
+/* ==================== tab-icon (desktop 隐藏) ==================== */
+.tab-icon {
+  display: none;
+  font-size: 20px;
+  line-height: 1;
+}
+
+/* ==================== 移动端遮罩 ==================== */
+.mobile-overlay {
+  display: none;
+}
+
+/* ==================== 移动端布局 ==================== */
+@media (max-width: 768px) {
+  /* 遮罩层 */
+  .mobile-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+    z-index: 998;
+    backdrop-filter: blur(2px);
+  }
+
+  /* Vue Transition 淡入淡出动画 */
+  .overlay-fade-enter-active,
+  .overlay-fade-leave-active {
+    transition: opacity 0.3s ease, backdrop-filter 0.3s ease;
+  }
+
+  .overlay-fade-enter-from,
+  .overlay-fade-leave-to {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+  }
+
+  /* 侧边栏整体：固定在底部 */
+  .sidebar-panel {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    z-index: 999;
+    flex-direction: column-reverse;
+    box-shadow: 0 -2px 16px rgba(0, 0, 0, 0.12);
+    background: #fff;
+    height: auto;
+    max-height: 56px;
+    transition: max-height 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
+    overflow: hidden;
+  }
+
+  .sidebar-panel.mobile-menu-open {
+    max-height: 70vh;
+  }
+
+  /* sidebar-main flex 反转：tab 在下、内容在上 */
+  .sidebar-main {
+    display: flex;
+    flex-direction: column-reverse;
+    flex: 1;
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  /* Tab 栏：底部固定行 */
+  .tabs-bar {
+    flex-direction: row;
+    width: 100%;
+    height: 56px;
+    min-height: 56px;
+    border-right: none;
+    border-top: 1px solid #e0e7ec;
+    background: #fff;
+    padding: 0;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+
+  .tab-button {
+    flex: 1;
+    height: 56px;
+    flex-direction: column;
+    gap: 2px;
+    border-bottom: none;
+    border-right: none;
+    padding: 6px 4px;
+    font-size: 11px;
+    color: #8a9caa;
+    background: transparent;
+    position: relative;
+  }
+
+  .tab-button::before {
+    display: none;
+  }
+
+  .tab-button.active {
+    color: #23587b;
+    background: rgba(35, 88, 123, 0.06);
+    font-weight: 600;
+  }
+
+  .tab-button:hover {
+    background: rgba(35, 88, 123, 0.04);
+  }
+
+  .tab-icon {
+    display: block;
+    font-size: 20px;
+    line-height: 1;
+  }
+
+  .tab-label {
+    font-size: 11px !important;
+  }
+
+  /* 内容面板：在 tab 上方展开 */
+  .options-bar {
+    width: 100%;
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    border-bottom: 1px solid #e0e7ec;
+  }
+
+  .option-content {
+    padding: 16px;
+    min-height: 0;
+    height: auto;
+  }
+
+  /* 日志区域在移动端隐藏（节省空间） */
+  .log-area {
+    display: none;
+  }
+
+  /* 选项按钮适配触摸 */
+  .option-button {
+    min-height: 44px;
+    padding: 12px 14px;
+    font-size: 14px;
+    border-radius: 10px;
+  }
+
+  .option-button:hover {
+    transform: none;
+  }
+
+  /* 输入组适配 */
+  .input-group input[type="number"],
+  .input-group input[type="text"] {
+    min-height: 44px;
+    padding: 10px 12px;
+    font-size: 15px;
+    border-radius: 8px;
+  }
+
+  .checkbox-label {
+    min-height: 44px;
+    padding: 10px 12px;
+    font-size: 14px;
+    border-radius: 8px;
+  }
+
+  /* tab-header 适配 */
+  .tab-header {
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+  }
+
+  .tab-header h3 {
+    font-size: 16px;
+  }
+
+  .options-group {
+    gap: 10px;
+    margin-bottom: 16px;
+    padding-bottom: 14px;
+  }
+
+  /* 导出缩略图 */
+  .export-thumbnail {
+    max-height: 140px;
+  }
+}
+
+/* ==================== 超小屏微调 ==================== */
+@media (max-width: 380px) {
+  .tab-button {
+    height: 52px;
+  }
+
+  .tab-icon {
+    font-size: 18px;
+  }
+
+  .tab-label {
+    font-size: 10px !important;
+  }
+
+  .sidebar-panel {
+    max-height: 52px;
+  }
+
+  .sidebar-panel.mobile-menu-open {
+    max-height: 75vh;
+  }
+
+  .tabs-bar {
+    height: 52px;
+    min-height: 52px;
+  }
 }
 </style>

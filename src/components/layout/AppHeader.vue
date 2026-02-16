@@ -60,42 +60,21 @@
 /* 响应式设计 - 移动设备 */
 @media (max-width: 768px) {
   .app-header {
-    flex-direction: column;
+    flex-direction: row;
     justify-content: center;
-    gap: 8px;
-    height: 80px;
-    padding: 10px 15px;
-  }
-
-  .header-text {
-    font-size: 22px;
-  }
-
-  .header-subtitle {
-    font-size: 12px;
-    text-align: center;
-    white-space: normal;
-    overflow: visible;
-    max-width: 100%;
-    line-height: 1.4;
-  }
-}
-
-/* 超小屏幕优化 */
-@media (max-width: 480px) {
-  .app-header {
-    height: auto;
-    min-height: 60px;
-    padding: 8px 12px;
+    align-items: center;
+    gap: 0;
+    height: 48px;
+    padding: 0 16px;
   }
 
   .header-text {
     font-size: 18px;
+    letter-spacing: 0.5px;
   }
 
   .header-subtitle {
-    font-size: 10px;
-    line-height: 1.3;
+    display: none;
   }
 }
 </style>

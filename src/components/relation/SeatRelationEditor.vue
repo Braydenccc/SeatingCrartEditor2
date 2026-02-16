@@ -889,14 +889,25 @@ const close = () => {
     padding: 0;
   }
 
+  .student-select {
+    min-height: 44px;
+    font-size: 15px;
+    padding: 10px 12px;
+  }
+
   .strength-selector {
     flex-wrap: wrap;
+  }
+
+  .strength-option {
+    min-height: 44px;
   }
 
   .relation-item {
     flex-wrap: wrap;
     gap: 6px;
-    padding: 8px 10px;
+    padding: 10px 12px;
+    min-height: 44px;
   }
 
   .relation-students {
@@ -911,6 +922,23 @@ const close = () => {
   .delete-relation-btn {
     order: 3;
     margin-left: auto;
+    width: 32px;
+    height: 32px;
+  }
+
+  .add-relation-btn {
+    min-height: 44px;
+    font-size: 15px;
+  }
+
+  .distance-select {
+    min-height: 44px;
+    font-size: 15px;
+  }
+
+  .modal-footer {
+    padding: 14px 18px;
+    padding-bottom: calc(14px + env(safe-area-inset-bottom, 0));
   }
 }
 

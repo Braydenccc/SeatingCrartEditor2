@@ -465,6 +465,10 @@ const deleteTagHandler = (tagId, tagName) => {
 
 /* 响应式设计 - 移动设备 */
 @media (max-width: 768px) {
+  .tag-manager {
+    border-bottom: none;
+  }
+
   .dialog {
     min-width: auto;
     width: 90%;
@@ -482,9 +486,11 @@ const deleteTagHandler = (tagId, tagName) => {
   }
 
   .tag-list {
-    padding: 8px 15px;
+    padding: 6px 12px;
+    min-height: 36px;
+    max-height: 80px;
+    gap: 6px;
   }
-
 
   .add-tag-btn {
     width: 26px;

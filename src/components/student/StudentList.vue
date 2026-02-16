@@ -255,10 +255,22 @@ const handleDeleteStudent = (studentId) => {
 
 /* 响应式设计 - 移动设备 */
 @media (max-width: 768px) {
+  .student-list-container {
+    border-top: none;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .student-list {
+    min-height: 0;
+    overflow: hidden;
+  }
+
   .student-list-header {
     flex-wrap: wrap;
     gap: 10px;
-    padding: 12px 15px;
+    padding: 10px 12px;
+    flex-shrink: 0;
   }
 
   .student-list-header h3 {
@@ -275,7 +287,8 @@ const handleDeleteStudent = (studentId) => {
   }
 
   .student-items {
-    padding: 8px;
+    padding: 6px 8px;
+    -webkit-overflow-scrolling: touch;
   }
 }
 

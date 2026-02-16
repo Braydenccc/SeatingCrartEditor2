@@ -411,6 +411,13 @@ const deleteHandler = () => {
   cursor: pointer;
 }
 
+/* 移动端减少间距 */
+@media (max-width: 768px) {
+  .student-item {
+    margin-bottom: 4px;
+  }
+}
+
 .student-item:hover {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
   transform: translateY(-1px);
@@ -689,34 +696,89 @@ const deleteHandler = () => {
 /* 响应式设计 - 移动设备 */
 @media (max-width: 768px) {
   .student-item {
-    flex-direction: column;
-    gap: 12px;
-    padding: 12px 15px;
+    flex-direction: row;
+    gap: 8px;
+    padding: 6px 10px;
+    margin-bottom: 6px;
+    align-items: center;
   }
 
   .student-info {
-    width: 100%;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
+    width: auto;
+    flex: 1;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
   }
 
   .student-number-section {
-    width: 100%;
+    width: auto;
+    flex-shrink: 0;
+  }
+
+  .student-number {
+    min-height: 28px;
+    padding: 4px 8px;
+    font-size: 13px;
+    min-width: 40px;
+  }
+
+  .student-number-input {
+    min-height: 32px;
+    font-size: 14px;
+    width: 60px;
   }
 
   .student-name-section {
-    width: 100%;
+    width: auto;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .student-name {
+    min-height: 28px;
+    font-size: 14px;
+    padding: 4px 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .student-name-input {
+    min-height: 32px;
+    font-size: 14px;
+  }
+
+  /* 移动端隐藏标签以节省空间 */
+  .student-tags {
+    display: none;
+  }
+
+  .add-tag-to-student-btn {
+    display: none;
+  }
+
+  .tag-option {
+    min-height: 44px;
+    padding: 12px 16px;
   }
 
   .student-actions {
-    width: 100%;
+    width: auto;
     margin-left: 0;
+    flex-shrink: 0;
   }
 
   .delete-student-btn {
-    width: 100%;
-    padding: 10px;
+    width: auto;
+    padding: 6px 12px;
+    min-height: 32px;
+    font-size: 12px;
+  }
+
+  .student-item:hover {
+    transform: none;
   }
 }
 

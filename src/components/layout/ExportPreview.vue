@@ -569,6 +569,8 @@ onBeforeUnmount(() => {
 @media (max-width: 768px) {
   .export-dialog {
     width: 98vw;
+    max-height: 92vh;
+    border-radius: 12px;
   }
 
   .dialog-body {
@@ -577,17 +579,76 @@ onBeforeUnmount(() => {
 
   .settings-panel {
     width: 100%;
-    max-height: 40vh;
+    max-height: 45vh;
     border-right: none;
     border-bottom: 1px solid #e8eef2;
   }
 
   .preview-panel {
-    min-height: 200px;
+    min-height: 160px;
+    padding: 14px;
   }
 
   .preview-img {
-    max-height: 30vh;
+    max-height: 28vh;
+  }
+
+  /* 触摸友好的表单控件 */
+  .setting-row input[type="text"] {
+    min-height: 44px;
+    padding: 10px 12px;
+    font-size: 15px;
+  }
+
+  .check-item {
+    min-height: 40px;
+    padding: 8px 0;
+    font-size: 14px;
+  }
+
+  .check-item input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+  }
+
+  .radio-item {
+    font-size: 14px;
+  }
+
+  .radio-item input[type="radio"] {
+    width: 18px;
+    height: 18px;
+  }
+
+  .num-input input[type="number"] {
+    min-height: 44px;
+    padding: 8px 10px;
+    font-size: 15px;
+  }
+
+  .tag-input {
+    min-height: 40px;
+    padding: 8px 10px;
+    font-size: 14px;
+  }
+
+  .btn {
+    min-height: 44px;
+    padding: 10px 20px;
+    font-size: 14px;
+  }
+
+  .dialog-footer {
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0));
+  }
+
+  .dialog-header {
+    padding: 12px 16px;
+  }
+
+  .close-btn {
+    width: 36px;
+    height: 36px;
   }
 }
 </style>

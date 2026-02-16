@@ -581,6 +581,16 @@ const handleSwapSeat = (seatId) => {
 
 /* ==================== 响应式 ==================== */
 @media (max-width: 768px) {
+  .seat-chart-container {
+    width: 100%;
+    height: 100%;
+  }
+
+  .seat-chart-viewport {
+    flex: 1;
+    min-height: 0;
+  }
+
   .seat-chart-info {
     flex-wrap: wrap;
     justify-content: center;
@@ -609,7 +619,7 @@ const handleSwapSeat = (seatId) => {
   }
 
   .zoom-controls {
-    bottom: 10px;
+    bottom: 12px;
     right: 10px;
   }
 }
@@ -645,7 +655,7 @@ const handleSwapSeat = (seatId) => {
   }
 
   .zoom-controls {
-    bottom: 8px;
+    bottom: 10px;
     right: 8px;
     padding: 3px;
   }

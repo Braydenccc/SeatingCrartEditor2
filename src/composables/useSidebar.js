@@ -1,14 +1,27 @@
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 
 const activeTab = ref(1)
+const mobileMenuOpen = ref(false)
 
 export function useSidebar() {
   const setActiveTab = (tabNumber) => {
-    activeTab.value = tabNumber
+    if (activeTab.value === tabNumber && mobileMenuOpen.value) {
+      // 再次点击同一 tab → 收起面板
+      mobileMenuOpen.value = false
+    } else {
+      activeTab.value = tabNumber
+      mobileMenuOpen.value = true
+    }
+  }
+
+  const closeMobileMenu = () => {
+    mobileMenuOpen.value = false
   }
 
   return {
     activeTab,
-    setActiveTab
+    mobileMenuOpen,
+    setActiveTab,
+    closeMobileMenu
   }
 }
