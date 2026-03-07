@@ -3,10 +3,13 @@
     <div class="header-left">
       <h1 class="header-text">BraydenSCE V2</h1>
       <div v-if="isLoggedIn" class="user-info">
-        <span class="welcome-text">欢迎, {{ currentUser.username }}</span>
-        <button class="auth-btn logout-btn" @click="logout">登出</button>
+        <span class="user-avatar">👤</span>
+        <span class="welcome-text">{{ currentUser.username }}</span>
+        <button class="auth-btn logout-btn" @click="logout" title="退出登录">退出</button>
       </div>
-      <button v-else class="auth-btn login-btn" @click="emit('open-login')">登录 / 注册</button>
+      <button v-else class="auth-btn login-btn" @click="emit('open-login')">
+        <span class="btn-icon">☁️</span>登录云端
+      </button>
     </div>
     <div class="header-right">
       <p class="header-subtitle">座位表编辑器 开发版本 <a href="https://afdian.com/a/brayden" target="_blank">byccc</a> 由<a href="https://host.retiehe.com/" target="_blank">热铁盒网页托管</a>提供服务</p>
@@ -61,36 +64,58 @@ onMounted(() => {
 .user-info {
   display: flex;
   align-items: center;
-  gap: 12px;
-  background: rgba(255, 255, 255, 0.1);
-  padding: 6px 16px;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(4px);
+  padding: 6px 14px;
   border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.user-avatar {
+  font-size: 14px;
 }
 
 .welcome-text {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 500;
 }
 
 .auth-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.4);
   color: white;
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 14px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .auth-btn:hover {
   background: rgba(255, 255, 255, 0.2);
   border-color: rgba(255, 255, 255, 0.8);
+  transform: translateY(-1px);
 }
 
 .login-btn {
-  background: rgba(255, 255, 255, 0.15);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.05) 100%);
   font-weight: 500;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.login-btn:hover {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.1) 100%);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn-icon {
+  font-size: 14px;
 }
 
 .header-right {
@@ -157,30 +182,55 @@ onMounted(() => {
   }
 
   .header-left {
-    gap: 12px;
+    position: static; /* Let absolute children position to app-header */
   }
 
   .header-text {
     font-size: 18px;
     letter-spacing: 0.5px;
+    margin: 0;
+  }
+
+  .user-info, .login-btn {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    margin: 0;
+    z-index: 10;
   }
 
   .user-info {
-    padding: 4px 10px;
-    gap: 8px;
+    padding: 4px 8px;
+    gap: 6px;
+    border-radius: 16px;
+  }
+
+  .user-avatar {
+    display: none;
   }
   
   .welcome-text {
-    font-size: 13px;
-    max-width: 80px;
+    font-size: 12px;
+    max-width: 60px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
   .auth-btn {
-    padding: 4px 8px;
+    padding: 4px 10px;
     font-size: 12px;
+    border-radius: 12px;
+  }
+
+  .login-btn {
+    padding: 4px 10px;
+    font-size: 12px;
+  }
+  
+  .btn-icon {
+    display: none;
   }
 
   .header-right {
