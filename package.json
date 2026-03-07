@@ -7,7 +7,7 @@
     "node": "^20.19.0 || >=22.12.0"
   },
   "scripts": {
-    "dev": "vite",
+    "dev": "cross-env EDITOR=antigravity vite",
     "build": "vite build",
     "preview": "vite preview",
     "build:exe": "npm run build && pkg server.cjs --targets node18-win-x64 --out-path dist/bin",
@@ -20,6 +20,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.1",
+    "cross-env": "^10.1.0",
     "vite": "^7.1.11",
     "vite-plugin-vue-devtools": "^8.0.3"
   },
@@ -28,9 +29,8 @@
   "bin": "server.cjs",
   "keywords": [],
   "author": "Braydenccc",
-  "license": "GPL-3.0-or-later"
-
-  ,"pkg": {
+  "license": "GPL-3.0-or-later",
+  "pkg": {
     "assets": [
       "dist/**/*"
     ]

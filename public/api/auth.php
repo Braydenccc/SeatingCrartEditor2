@@ -1,0 +1,91 @@
+<?php
+// 热铁盒云函数 API - 用户验证模块 (auth.php)
+header('Content-Type: application/json; charset=utf-8');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type');
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    exit(0);
+}
+
+// 确保在热铁盒环境中类存在
+if (!class_exists('Database')) {
+    echo json_encode(['success' => false, 'message' => 'Environment error: Database not supported.']);
+    exit(1);
+}
+
+// 解析 JSON 载荷
+$rawInput = file_get_contents('php://input');
+$input = json_decode($rawInput, true);
+
+if (!$input || !isset($input['action'])) {
+    echo json_encode(['success' => false, 'message' => 'Invalid Request']);
+    exit(1);
+}
+
+$action = $input['action'];
+$username = isset($input['username']) ? trim($input['username']) : null;
+$password = isset($input['password']) ? trim($input['password']) : null;
+
+if (!$username || !$password) {
+    echo json_encode(['success' => false, 'message' => '用户名和密码不能为空']);
+    exit(1);
+}
+
+// 连接 "users" 数据库
+$db = new Database("users");
+
+try {
+    if ($action === 'register') {
+        // 检查用户是否已存在
+        $existingHash = $db->get($username);
+        if ($existingHash !== null) {
+            echo json_encode(['success' => false, 'message' => '该用户名已被注册']);
+            exit(0);
+        }
+
+        // 使用 PASSWORD_DEFAULT (目前是 bcrypt) 加密密码
+        $hash = password_hash($password, PASSWORD_DEFAULT);
+        $db->set($username, $hash);
+        
+        // 返回包含 mock token 的信息以维持和本地测试端一致的形态
+        $token = base64_encode($username . ':' . time());
+        echo json_encode([
+            'success' => true,
+            'message' => '注册成功',
+            'data' => [
+                'username' => $username,
+                'token' => $token
+            ]
+        ]);
+        
+    } elseif ($action === 'login') {
+        // 登录
+        $existingHash = $db->get($username);
+        if ($existingHash === null) {
+            echo json_encode(['success' => false, 'message' => '用户名或密码不正确']);
+            exit(0);
+        }
+
+        // 校验密码
+        if (password_verify($password, $existingHash)) {
+            $token = base64_encode($username . ':' . time());
+            echo json_encode([
+                'success' => true,
+                'message' => '登录成功',
+                'data' => [
+                    'username' => $username,
+                    'token' => $token
+                ]
+            ]);
+        } else {
+            echo json_encode(['success' => false, 'message' => '用户名或密码不正确']);
+        }
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Unknown action']);
+    }
+} catch (Exception $e) {
+    echo json_encode(['success' => false, 'message' => 'Internal Server Error']);
+}
+?>
