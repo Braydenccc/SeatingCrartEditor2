@@ -11,6 +11,9 @@
           <button :class="{ active: isLoginMode }" @click="isLoginMode = true">登录</button>
           <button :class="{ active: !isLoginMode }" @click="isLoginMode = false">注册</button>
         </div>
+        <div style="color: #ef4444; font-size: 13px; margin-bottom: 16px; text-align: center;">
+          本账号服务不保证可用性，请妥善备份您的数据
+        </div>
 
         <form @submit.prevent="handleSubmit">
           <div class="form-group">
