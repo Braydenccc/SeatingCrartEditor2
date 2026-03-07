@@ -72,10 +72,16 @@ const server = http.createServer((req, res) => {
 
 const port = process.env.PORT || 3000;
 server.listen(port, () => {
-  console.log(`Serving built app from ${DIST} on http://localhost:${port}`);
-  console.log(`DIST path: ${DIST}`);
-  console.log(`__dirname: ${__dirname}`);
-  if (process.pkg) {
-    console.log(`Running as packaged executable from: ${process.execPath}`);
+  const url = `http://localhost:${port}`;
+  console.log(`Serving at ${url}`);
+
+  // 自动打开系统默认浏览器（兼容 pkg 打包环境）
+  const { spawn } = require('child_process');
+  if (process.platform === 'win32') {
+    spawn('cmd.exe', ['/c', 'start', '', url], { detached: true, stdio: 'ignore' }).unref();
+  } else if (process.platform === 'darwin') {
+    spawn('open', [url], { detached: true, stdio: 'ignore' }).unref();
+  } else {
+    spawn('xdg-open', [url], { detached: true, stdio: 'ignore' }).unref();
   }
 });

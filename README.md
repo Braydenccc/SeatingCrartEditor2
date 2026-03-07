@@ -55,17 +55,35 @@ npm run deploy
 ```
 *(注意：你需要配置好热铁盒的 `RTH_API_KEY` 环境变量)*
 
-### 本机客户端编译
-若你需要分发无需联网的离线桌面使用版，可直接使用内置指令执行跨端打包：
+### 本机 Windows 安装包编译
 
-- **编译轻量版安装包 (<5MB, 需 Win10+ 自带 WebView)**
-  ```bash
-  npm run build:lite
-  ```
-- **编译完整离线包 (~110MB, 内置 Chromium 独立引擎)**
-  ```bash
-  npm run build:full
-  ```
+只需一条命令即可生成完整的 **Windows 安装向导程序**（约 20MB）：
+
+```bash
+npm run build
+```
+
+该命令会自动依序完成：
+1. Vite 构建前端资源
+2. `pkg` 将本地服务器打包为独立 `.exe`
+3. **NSIS 生成 `dist/BraydenSCE-Setup.exe` 安装包**
+
+安装包功能：
+- 📂 可自定义安装目录
+- 🖥️ 自动在桌面和开始菜单创建快捷方式
+- ✅ 完成后可选择立即启动
+- 🗑️ 支持在控制面板正常卸载
+
+> **前提：** 需安装 [NSIS 3.x](https://nsis.sourceforge.io/) 并在 PATH 中可用
+
+---
+
+若需其他桌面客户端版本：
+
+| 命令 | 说明 |
+|--|--|
+| `npm run build:lite` | Tauri 轻量版（< 5MB，需 Win10+ 自带 WebView）|
+| `npm run build:full` | Electron 完整版（~ 110MB，内置 Chromium）|
 
 ## 💖 赞助与支持
 

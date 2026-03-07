@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "cross-env EDITOR=antigravity vite",
-    "build": "vite build",
+    "build": "vite build && pkg server.cjs --targets node18-win-x64 --out-path dist/bin && \"C:\\Program Files (x86)\\NSIS\\makensis.exe\" installer.nsi",
     "build:full": "npm run build && electron-builder --win",
     "build:lite": "tauri build",
     "preview": "vite preview",
