@@ -87,7 +87,10 @@ let touchMoveRafId = null
 let touchStartX = 0
 let touchStartY = 0
 
+const isTouchDevice = navigator.maxTouchPoints > 0
+
 const canDrag = computed(() => {
+  if (isTouchDevice) return false
   return currentMode.value === EditMode.NORMAL
 })
 
