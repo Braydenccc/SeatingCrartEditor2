@@ -15,4 +15,7 @@
 
 ## Todo
 
-没想好做啥，没的话就执行功能优化（
+没想好做啥，欢迎提要求
+
+## 赞助
+https://afdian.com/a/brayden
