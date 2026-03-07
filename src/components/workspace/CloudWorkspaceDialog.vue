@@ -152,12 +152,22 @@ const selectForOverwrite = (ws) => {
 }
 
 const handleSave = async () => {
-  if (!workspaceName.value.trim()) return
+  const trimmedName = workspaceName.value.trim()
+  if (!trimmedName) return
   
   errorMessage.value = ''
   isSaving.value = true
   
   try {
+    // 检查是否重名，如果重名强制转为覆盖
+    let targetFileId = selectedOverwriteId.value
+    if (!targetFileId) {
+       const existingWs = workspaces.value.find(ws => ws.metadata.name === trimmedName)
+       if (existingWs) {
+         targetFileId = existingWs.fileId
+       }
+    }
+
     const jsonContent = getWorkspaceJson()
     
     if (!jsonContent) {
@@ -165,9 +175,9 @@ const handleSave = async () => {
     }
 
     const result = await saveWorkspaceToCloud(
-      workspaceName.value.trim(), 
+      trimmedName, 
       jsonContent, 
-      selectedOverwriteId.value
+      targetFileId
     )
     
     if (result.success) {

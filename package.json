@@ -9,6 +9,8 @@
   "scripts": {
     "dev": "cross-env EDITOR=antigravity vite",
     "build": "vite build",
+    "build:full": "npm run build && electron-builder --win",
+    "build:lite": "tauri build",
     "preview": "vite preview",
     "build:exe": "npm run build && pkg server.cjs --targets node18-win-x64 --out-path dist/bin",
     "deploy": "powershell -c \"$f=New-TemporaryFile; iwr https://host.retiehe.com/cli -OutFile $f; node $f --site sce --build build --outdir dist; rm $f -Force\""
@@ -20,14 +22,27 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@tauri-apps/cli": "^2.10.1",
     "@vitejs/plugin-vue": "^6.0.1",
     "cross-env": "^10.1.0",
+    "electron": "^40.8.0",
+    "electron-builder": "^26.8.1",
     "vite": "^7.1.11",
     "vite-plugin-vue-devtools": "^8.0.3"
   },
   "description": "This template should help get you started developing with Vue 3 in Vite.",
-  "main": "vite.config.js",
+  "main": "electron-main.cjs",
   "bin": "server.cjs",
+  "build": {
+    "appId": "com.braydensce.app",
+    "productName": "BraydenSCE",
+    "directories": {
+      "output": "dist_electron"
+    },
+    "win": {
+      "target": "nsis"
+    }
+  },
   "keywords": [],
   "author": "Braydenccc",
   "license": "GPL-3.0-or-later",

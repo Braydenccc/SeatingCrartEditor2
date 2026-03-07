@@ -297,7 +297,7 @@ const handleLoadWorkspace = async (event) => {
   if (!file) return
 
   try {
-    // 直接加载工作区文件并恢复数据
+    // 直接加载并解析为JS对象
     const workspace = await loadWorkspace(file)
 
     // 验证返回值
@@ -308,112 +308,10 @@ const handleLoadWorkspace = async (event) => {
     }
 
     try {
-      // 清空现有数据
-      clearAllStudents()
-      clearAllTags()
-
-      // 恢复标签并记录旧ID->新ID映射
-      const oldTagIdToNewId = {}
-      workspace.tags.forEach(tag => {
-        addTag({ name: tag.name, color: tag.color })
-        const added = tags.value.find(t => t.name === tag.name && t.color === tag.color)
-        if (added) oldTagIdToNewId[tag.id] = added.id
-      })
-
-      // 恢复学生并记录旧ID->新ID映射
-      const oldStudentIdToNewId = {}
-      workspace.students.forEach(s => {
-        const newId = addStudent()
-        const mappedTags = (s.tags || []).map(tid => oldTagIdToNewId[tid]).filter(x => x != null)
-        updateStudent(newId, {
-          name: s.name,
-          studentNumber: s.studentNumber,
-          tags: mappedTags
-        })
-        oldStudentIdToNewId[s.id] = newId
-      })
-
-      // 恢复座位配置
-      if (workspace.layout && workspace.layout.config) {
-        updateConfig(workspace.layout.config)
+      const isSuccess = await applyWorkspaceData(workspace)
+      if (isSuccess) {
+        success('工作区加载并恢复成功！')
       }
-
-      // 等待 seats 初始化后恢复座位分配
-      // 清空所有分配
-      clearAllSeats()
-
-      if (workspace.layout && Array.isArray(workspace.layout.seats)) {
-        workspace.layout.seats.forEach(sw => {
-          const match = seats.value.find(st =>
-            st.groupIndex === sw.group && st.columnIndex === sw.col && st.rowIndex === sw.row
-          )
-          if (match) {
-            match.isEmpty = !!sw.empty
-            match.studentId = sw.studentId != null ? (oldStudentIdToNewId[sw.studentId] || null) : null
-          }
-        })
-      }
-
-      // 恢复导出设置
-      if (workspace.exportSettings) {
-        Object.keys(workspace.exportSettings).forEach(k => {
-          exportSettings.value[k] = workspace.exportSettings[k]
-        })
-      }
-
-      // 恢复联系关系
-      if (workspace.relations && Array.isArray(workspace.relations)) {
-        const { clearAllRelations, addRelation } = useSeatRelation()
-        clearAllRelations()
-
-        workspace.relations.forEach(r => {
-          const newStudentId1 = oldStudentIdToNewId[r.s1]
-          const newStudentId2 = oldStudentIdToNewId[r.s2]
-
-          // 只有当两个学生都成功映射时才恢复联系
-          if (newStudentId1 && newStudentId2) {
-            addRelation(
-              newStudentId1,
-              newStudentId2,
-              r.type,
-              r.strength || 'high',
-              r.meta || {}
-            )
-          }
-        })
-      }
-
-      // 恢复选区数据
-      if (workspace.zones && Array.isArray(workspace.zones)) {
-        const { clearAllZones, addZone, updateZone } = useZoneData()
-        clearAllZones()
-
-        // 获取已有的 tagIds 映射（标签使用 addTag 自增 ID，需要重新映射）
-        const oldTagIdToNewId = {}
-        if (workspace.tags && Array.isArray(workspace.tags)) {
-          workspace.tags.forEach((t, index) => {
-            // tags 已经按顺序恢复，新 ID = tags[index].id
-            if (tags.value[index]) {
-              oldTagIdToNewId[t.id] = tags.value[index].id
-            }
-          })
-        }
-
-        workspace.zones.forEach(z => {
-          const newZone = addZone()
-          const mappedTagIds = z.tagIds
-            .map(tid => oldTagIdToNewId[tid])
-            .filter(id => id !== undefined)
-          updateZone(newZone.id, {
-            name: z.name,
-            tagIds: mappedTagIds,
-            seatIds: [...z.seatIds],
-            visible: z.visible !== undefined ? z.visible : false
-          })
-        })
-      }
-
-      success('工作区加载并恢复成功！')
     } catch (err) {
       error('恢复工作区时发生错误: ' + (err.message || err))
     }

@@ -22,6 +22,7 @@ node_modules/
 dist/
 dist-ssr/
 build/
+dist_electron/
 /.parcel-cache/
 
 # Vite

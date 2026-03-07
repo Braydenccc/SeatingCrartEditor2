@@ -200,6 +200,10 @@ onMounted(() => {
     z-index: 10;
   }
 
+  .user-info:hover, .login-btn:hover {
+    transform: translateY(-50%); /* Prevent hover from shifting absolute position */
+  }
+
   .user-info {
     padding: 4px 8px;
     gap: 6px;

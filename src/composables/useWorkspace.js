@@ -5,17 +5,19 @@ import { useExportSettings } from './useExportSettings'
 import { useSeatRelation } from './useSeatRelation'
 import { useZoneData } from './useZoneData'
 import { RelationType, RelationStrength } from '../constants/relationTypes.js'
+import { useLogger } from './useLogger'
 
 const FILE_EXT = '.sce'
 const CURRENT_VERSION = '2.0'
 
 export function useWorkspace() {
-  const { students } = useStudentData()
-  const { tags } = useTagData()
-  const { seatConfig, seats } = useSeatChart()
+  const { students, addStudent, updateStudent, clearAllStudents } = useStudentData()
+  const { tags, addTag, clearAllTags } = useTagData()
+  const { seatConfig, seats, updateConfig, clearAllSeats } = useSeatChart()
   const { exportSettings } = useExportSettings()
-  const { relations } = useSeatRelation()
-  const { zones } = useZoneData()
+  const { relations, clearAllRelations, addRelation } = useSeatRelation()
+  const { zones, clearAllZones, addZone, updateZone } = useZoneData()
+  const { success, error } = useLogger()
 
   // 生成工作区 JSON 数据 (用于云端或本地保存)
   const getWorkspaceJson = () => {
@@ -140,18 +142,120 @@ export function useWorkspace() {
       try {
         // 验证基本结构
         if (!workspaceRaw.students || !workspaceRaw.tags) {
+          error('工作区文件内容不完整或格式不正确')
           resolve(false)
           return
         }
 
         // 版本迁移
-        const migrated = migrateWorkspace(workspaceRaw)
+        const workspace = migrateWorkspace(workspaceRaw)
 
         // 下发具体的写入将在外部处理 (现有的加载逻辑是在 SidebarPanel 里实现并注入组件的)
-        // 这里我们只需要返回可靠的迁移后的对象，让 SidebarPanel 等组件负责恢复即可。
-        resolve(migrated)
-      } catch (error) {
-        console.error('Apply Workspace Data failed:', error)
+        // 这里我们进行集中恢复。
+
+        // 清空现有数据
+        clearAllStudents()
+        clearAllTags()
+
+        // 恢复标签并记录旧ID->新ID映射
+        const oldTagIdToNewId = {}
+        workspace.tags.forEach(tag => {
+          addTag({ name: tag.name, color: tag.color })
+          const added = tags.value.find(t => t.name === tag.name && t.color === tag.color)
+          if (added) oldTagIdToNewId[tag.id] = added.id
+        })
+
+        // 恢复学生并记录旧ID->新ID映射
+        const oldStudentIdToNewId = {}
+        workspace.students.forEach(s => {
+          const newId = addStudent()
+          const mappedTags = (s.tags || []).map(tid => oldTagIdToNewId[tid]).filter(x => x != null)
+          updateStudent(newId, {
+            name: s.name,
+            studentNumber: s.studentNumber,
+            tags: mappedTags
+          })
+          oldStudentIdToNewId[s.id] = newId
+        })
+
+        // 恢复座位配置
+        if (workspace.layout && workspace.layout.config) {
+          updateConfig(workspace.layout.config)
+        }
+
+        // 清空所有分配
+        clearAllSeats()
+
+        if (workspace.layout && Array.isArray(workspace.layout.seats)) {
+          workspace.layout.seats.forEach(sw => {
+            const match = seats.value.find(st =>
+              st.groupIndex === sw.group && st.columnIndex === sw.col && st.rowIndex === sw.row
+            )
+            if (match) {
+              match.isEmpty = !!sw.empty
+              match.studentId = sw.studentId != null ? (oldStudentIdToNewId[sw.studentId] || null) : null
+            }
+          })
+        }
+
+        // 恢复导出设置
+        if (workspace.exportSettings) {
+          Object.keys(workspace.exportSettings).forEach(k => {
+            exportSettings.value[k] = workspace.exportSettings[k]
+          })
+        }
+
+        // 恢复联系关系
+        if (workspace.relations && Array.isArray(workspace.relations)) {
+          clearAllRelations()
+          workspace.relations.forEach(r => {
+            const newStudentId1 = oldStudentIdToNewId[r.s1]
+            const newStudentId2 = oldStudentIdToNewId[r.s2]
+
+            // 只有当两个学生都成功映射时才恢复联系
+            if (newStudentId1 && newStudentId2) {
+              addRelation(
+                newStudentId1,
+                newStudentId2,
+                r.type,
+                r.strength || 'high',
+                r.meta || {}
+              )
+            }
+          })
+        }
+
+        // 恢复选区数据
+        if (workspace.zones && Array.isArray(workspace.zones)) {
+          clearAllZones()
+
+          const oldZoneTagIdToNewId = {}
+          if (workspace.tags && Array.isArray(workspace.tags)) {
+            workspace.tags.forEach((t, index) => {
+              if (tags.value[index]) {
+                oldZoneTagIdToNewId[t.id] = tags.value[index].id
+              }
+            })
+          }
+
+          workspace.zones.forEach(z => {
+            const newZone = addZone()
+            const mappedTagIds = z.tagIds
+              .map(tid => oldZoneTagIdToNewId[tid])
+              .filter(id => id !== undefined)
+            updateZone(newZone.id, {
+              name: z.name,
+              tagIds: mappedTagIds,
+              seatIds: [...z.seatIds],
+              visible: z.visible !== undefined ? z.visible : false
+            })
+          })
+        }
+
+        resolve(true)
+      } catch (err) {
+        console.error('Apply Workspace Data failed:', err)
+        error('恢复工作区时发生错误: ' + (err.message || err))
         resolve(false)
       }
     })
