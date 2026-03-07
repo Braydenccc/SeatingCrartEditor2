@@ -81,11 +81,13 @@ try {
         // 如果提供了 fileId，则覆盖写入；否则创建新文件
         $fileId = isset($input['fileId']) && !empty($input['fileId']) ? $input['fileId'] : uniqid('ws_');
 
+        $contentSize = is_string($content) ? strlen($content) : strlen(json_encode($content));
+
         $metadata = [
             'author' => $username,
             'name' => $name,
             'time' => date('c'),
-            'size' => strlen($content)
+            'size' => $contentSize
         ];
 
         $fileData = [
