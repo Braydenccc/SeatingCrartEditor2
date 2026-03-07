@@ -97,11 +97,16 @@ const isClickable = computed(() => {
 // 是否为触摸设备（触摸设备用自定义 touch 拖拽，不用 HTML5 drag 避免幽灵图）
 const isTouchDevice = navigator.maxTouchPoints > 0
 
-// 是否可拖拽：触摸设备上禁用 HTML5 draggable，由 touchstart/move/end 处理
-const isDraggable = computed(() => {
-  if (isTouchDevice) return false
+// 触摸拖拽激活条件（不受 isTouchDevice 影响）
+const canTouchDrag = computed(() => {
   return hasStudent.value &&
     (currentMode.value === EditMode.NORMAL || currentMode.value === EditMode.SWAP)
+})
+
+// HTML5 draggable 属性：触摸设备上禁用，防止幽灵拖拽图
+const isDraggable = computed(() => {
+  if (isTouchDevice) return false
+  return canTouchDrag.value
 })
 
 // ==================== 点击处理 ====================
@@ -203,7 +208,7 @@ const handleDrop = (e) => {
 // ==================== 触摸拖拽模拟 ====================
 
 const handleTouchStart = (e) => {
-  if (e.touches.length !== 1 || !isDraggable.value) return
+  if (e.touches.length !== 1 || !canTouchDrag.value) return
 
   const touch = e.touches[0]
   const startX = touch.clientX

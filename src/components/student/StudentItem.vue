@@ -89,9 +89,13 @@ let touchStartY = 0
 
 const isTouchDevice = navigator.maxTouchPoints > 0
 
+// 触摸拖拽激活条件
+const canTouchDrag = computed(() => currentMode.value === EditMode.NORMAL)
+
+// HTML5 draggable 属性：触摸设备上禁用
 const canDrag = computed(() => {
   if (isTouchDevice) return false
-  return currentMode.value === EditMode.NORMAL
+  return canTouchDrag.value
 })
 
 const handleDragStart = (e) => {
@@ -113,7 +117,7 @@ const handleDragEnd = () => {
 
 // 触摸拖拽
 const handleTouchDragStart = (e) => {
-  if (e.touches.length !== 1 || !canDrag.value) return
+  if (e.touches.length !== 1 || !canTouchDrag.value) return
   const touch = e.touches[0]
   const startX = touch.clientX
   const startY = touch.clientY
