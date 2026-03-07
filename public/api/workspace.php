@@ -19,8 +19,30 @@ if (!class_exists('Database')) {
 $rawInput = file_get_contents('php://input');
 $input = json_decode($rawInput, true);
 
+// 支持部分服务器直接把 payload 转化到了 $_POST
+if (!$input && !empty($_POST)) {
+    // 可能是 application/x-www-form-urlencoded
+    $input = $_POST;
+} elseif (!$input && isset($HTTP_RAW_POST_DATA)) {
+    $input = json_decode($HTTP_RAW_POST_DATA, true);
+}
+
+// 支持处理被服务器 301 重定向为 GET 的情况，或者仅仅是为了调试
+if ((!$input || !isset($input['action'])) && !empty($_GET) && isset($_GET['action'])) {
+    $input = $_GET;
+}
+
 if (!$input || !isset($input['action'])) {
-    echo json_encode(['success' => false, 'message' => 'Invalid Request']);
+    echo json_encode([
+        'success' => false, 
+        'message' => 'Invalid Request',
+        'debug' => [
+            'method' => $_SERVER['REQUEST_METHOD'],
+            'contentType' => isset($_SERVER['CONTENT_TYPE']) ? $_SERVER['CONTENT_TYPE'] : 'none',
+            'rawLength' => strlen($rawInput),
+            'hasPost' => !empty($_POST)
+        ]
+    ]);
     exit(1);
 }
 
