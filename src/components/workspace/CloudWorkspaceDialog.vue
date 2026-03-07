@@ -202,8 +202,18 @@ const handleLoad = async (fileId) => {
   try {
     const result = await loadWorkspaceFromCloud(fileId)
     if (result.success && result.data && result.data.content) {
-      const workspaceData = JSON.parse(result.data.content)
-      const isSuccess = await applyWorkspaceData(workspaceData) // We need to create this helper in useWorkspace
+      let workspaceData;
+      if (typeof result.data.content === 'string') {
+        try {
+          workspaceData = JSON.parse(result.data.content)
+        } catch (e) {
+          throw new Error('云端该工作区数据已损坏或不支持 (由于早期保存格式问题导致)，请加载其他近期工作区。')
+        }
+      } else {
+        workspaceData = result.data.content
+      }
+      
+      const isSuccess = await applyWorkspaceData(workspaceData)
       
       if (isSuccess) {
         success('已从云端恢复工作区！')

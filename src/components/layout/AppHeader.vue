@@ -1,15 +1,28 @@
 <template>
   <header class="app-header">
     <div class="header-left">
-      <h1 class="header-text">BraydenSCE V2</h1>
-      <div v-if="isLoggedIn" class="user-info">
-        <span class="user-avatar">👤</span>
-        <span class="welcome-text">{{ currentUser.username }}</span>
-        <button class="auth-btn logout-btn" @click="logout" title="退出登录">退出</button>
+      <div v-if="isLoggedIn" class="user-menu-container" ref="menuContainer">
+        <div class="user-info" @click="toggleDropdown">
+          <span class="user-avatar">👤</span>
+          <span class="welcome-text">{{ currentUser.username }}</span>
+          <span class="dropdown-icon">▼</span>
+        </div>
+        <Transition name="fade-slide">
+          <div v-if="showDropdown" class="user-dropdown">
+            <button class="dropdown-item" @click="openWorkspaceManagement">
+              <span class="item-icon">☁️</span> 工作区管理
+            </button>
+            <button class="dropdown-item text-danger" @click="handleLogout">
+              <span class="item-icon">🚪</span> 退出登录
+            </button>
+          </div>
+        </Transition>
       </div>
       <button v-else class="auth-btn login-btn" @click="emit('open-login')">
-        <span class="btn-icon">☁️</span>登录云端
+        <span class="btn-icon">☁️</span>登录
       </button>
+
+      <h1 class="header-text">BraydenSCE V2</h1>
     </div>
     <div class="header-right">
       <p class="header-subtitle">座位表编辑器 开发版本 <a href="https://afdian.com/a/brayden" target="_blank">byccc</a> 由<a href="https://host.retiehe.com/" target="_blank">热铁盒网页托管</a>提供服务</p>
@@ -19,19 +32,55 @@
         </svg>
       </a>
     </div>
+    
+    <CloudWorkspaceDialog 
+      :visible="showWorkspaceManagement" 
+      mode="load" 
+      @update:visible="showWorkspaceManagement = $event" 
+    />
   </header>
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { onMounted, ref, onBeforeUnmount } from 'vue'
 import { useAuth } from '@/composables/useAuth'
+import CloudWorkspaceDialog from '../workspace/CloudWorkspaceDialog.vue'
 
 const emit = defineEmits(['open-login'])
 
 const { currentUser, isLoggedIn, logout, initAuth } = useAuth()
 
+const showDropdown = ref(false)
+const showWorkspaceManagement = ref(false)
+const menuContainer = ref(null)
+
+const toggleDropdown = () => {
+  showDropdown.value = !showDropdown.value
+}
+
+const openWorkspaceManagement = () => {
+  showWorkspaceManagement.value = true
+  showDropdown.value = false
+}
+
+const handleLogout = () => {
+  logout()
+  showDropdown.value = false
+}
+
+const closeDropdownOnOutsideClick = (e) => {
+  if (menuContainer.value && !menuContainer.value.contains(e.target)) {
+    showDropdown.value = false
+  }
+}
+
 onMounted(() => {
   initAuth()
+  document.addEventListener('click', closeDropdownOnOutsideClick)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', closeDropdownOnOutsideClick)
 })
 </script>
 
@@ -54,6 +103,67 @@ onMounted(() => {
   gap: 24px;
 }
 
+.user-menu-container {
+  position: relative;
+}
+
+.dropdown-icon {
+  font-size: 10px;
+  margin-left: 4px;
+  transition: transform 0.3s;
+}
+
+.user-info:hover .dropdown-icon {
+  transform: translateY(2px);
+}
+
+.user-dropdown {
+  position: absolute;
+  top: calc(100% + 12px);
+  left: 0;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  min-width: 140px;
+  z-index: 100;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font-size: 14px;
+  color: #333;
+  cursor: pointer;
+  transition: background 0.2s;
+  gap: 8px;
+}
+
+.dropdown-item:hover {
+  background: #f5f5f5;
+}
+
+.dropdown-item.text-danger {
+  color: #e53935;
+}
+
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fade-slide-enter-from,
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
 .header-text {
   margin: 0;
   font-size: 32px;
@@ -64,13 +174,19 @@ onMounted(() => {
 .user-info {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   background: rgba(255, 255, 255, 0.15);
   backdrop-filter: blur(4px);
-  padding: 6px 14px;
-  border-radius: 20px;
+  padding: 8px 16px;
+  border-radius: 24px;
   border: 1px solid rgba(255, 255, 255, 0.2);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.user-info:hover {
+  background: rgba(255, 255, 255, 0.25);
 }
 
 .user-avatar {
@@ -178,7 +294,7 @@ onMounted(() => {
     align-items: center;
     gap: 0;
     height: 48px;
-    padding: 0 16px;
+    padding: 0 16px 0 0; /* remove left padding so the button can touch the edge */
   }
 
   .header-left {
@@ -191,23 +307,48 @@ onMounted(() => {
     margin: 0;
   }
 
-  .user-info, .login-btn {
+  .user-menu-container, .login-btn {
     position: absolute;
-    left: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    margin: 0;
+    left: 0;
+    top: 0;
+    height: 100%; /* Fuse with header bar */
     z-index: 10;
   }
 
-  .user-info:hover, .login-btn:hover {
-    transform: translateY(-50%); /* Prevent hover from shifting absolute position */
+  .user-info {
+    position: static;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    margin: 0;
+    transform: none; /* remove translateY */
+    border-radius: 0; /* drop rounded corners */
+    background: #1c4b6b; /* Solid color to fuse with title bar, replacing transparency */
+    backdrop-filter: none;
+    border: none;
+    border-right: 1px solid rgba(255, 255, 255, 0.1); 
+    padding: 0 16px;
   }
 
-  .user-info {
-    padding: 4px 8px;
-    gap: 6px;
-    border-radius: 16px;
+  .login-btn {
+    border-radius: 0;
+    margin: 0;
+    transform: none;
+    background: #1c4b6b;
+    border: none;
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .user-info:hover, .login-btn:hover {
+    transform: none; 
+    background: #18415c;
+  }
+
+  .user-dropdown {
+    top: 100%; /* attach directly below header */
+    left: 0;
+    border-radius: 0 0 12px 12px;
   }
 
   .user-avatar {
@@ -215,7 +356,7 @@ onMounted(() => {
   }
   
   .welcome-text {
-    font-size: 12px;
+    font-size: 13px;
     max-width: 60px;
     white-space: nowrap;
     overflow: hidden;
@@ -223,14 +364,8 @@ onMounted(() => {
   }
 
   .auth-btn {
-    padding: 4px 10px;
-    font-size: 12px;
-    border-radius: 12px;
-  }
-
-  .login-btn {
-    padding: 4px 10px;
-    font-size: 12px;
+    padding: 0 16px;
+    font-size: 13px;
   }
   
   .btn-icon {

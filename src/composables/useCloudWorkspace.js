@@ -52,9 +52,10 @@ export function useCloudWorkspace() {
 
     // Save a workspace
     const saveWorkspaceToCloud = async (name, content, fileId = null) => {
+        const parsedContent = typeof content === 'string' ? JSON.parse(content) : content
         return await callWorkspaceApi('save', {
             name,
-            content,
+            content: parsedContent,
             fileId
         })
     }
