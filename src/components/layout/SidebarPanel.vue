@@ -176,7 +176,6 @@
     :visible="showCloudDialog" 
     :mode="cloudDialogMode" 
     @update:visible="showCloudDialog = $event" 
-    @success="handleCloudSuccess" 
   />
 
   <!-- 座位联系编辑器模态框 -->

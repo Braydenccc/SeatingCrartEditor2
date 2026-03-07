@@ -183,7 +183,9 @@ const handleSave = async () => {
     if (result.success) {
       success('工作区已保存至云端！')
       emit('success')
+      isSaving.value = false
       close()
+      return
     } else {
       errorMessage.value = result.message
     }
