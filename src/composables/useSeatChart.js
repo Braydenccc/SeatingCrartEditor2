@@ -76,6 +76,8 @@ const organizedSeats = computed(() => {
 })
 
 export function useSeatChart() {
+  const { cleanupInvalidSeats } = useZoneData()
+
   // 分配学生到座位
   const assignStudent = (seatId, studentId) => {
     const seat = seatMap.get(seatId)
@@ -121,7 +123,6 @@ export function useSeatChart() {
     seatConfig.value = { ...seatConfig.value, ...newConfig }
     initializeSeats()  // 重新初始化座位
     // 清理选区中已失效的座位引用
-    const { cleanupInvalidSeats } = useZoneData()
     cleanupInvalidSeats(seats.value.map(s => s.id))
   }
 

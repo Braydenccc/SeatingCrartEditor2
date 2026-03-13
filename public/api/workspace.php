@@ -59,11 +59,9 @@ if (!$username || !$token) {
 $dbUsers = new Database("users");
 $dbFiles = new Database("scefiles");
 
-// --- 简单的 Token 验证 ---
-// （在实际应用中，应该在 auth.php 发放更安全的 JWT Token，这里使用简单的 mock token 进行对应验证）
-$expectedPrefix = $username . ':';
-$decodedToken = base64_decode($token);
-if (strpos($decodedToken, $expectedPrefix) !== 0) {
+// --- Token 验证：与 auth.php 颁发的随机 token 进行比对 ---
+$storedToken = $dbUsers->get($username . '_token');
+if (!$storedToken || $storedToken !== $token) {
     echo json_encode(['success' => false, 'message' => 'Token无效或已过期']);
     exit(1);
 }
