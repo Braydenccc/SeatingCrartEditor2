@@ -71,9 +71,8 @@ try {
         $hash = password_hash($password, PASSWORD_DEFAULT);
         $db->set($username, $hash);
         
-        // 生成随机 token 并持久化到 KV 数据库
-        $token = bin2hex(random_bytes(32));
-        $db->set($username . '_token', $token);
+        // 返回包含 mock token 的信息以维持和本地测试端一致的形态
+        $token = base64_encode($username . ':' . time());
         echo json_encode([
             'success' => true,
             'message' => '注册成功',
@@ -93,9 +92,7 @@ try {
 
         // 校验密码
         if (password_verify($password, $existingHash)) {
-            // 生成随机 token 并持久化到 KV 数据库
-            $token = bin2hex(random_bytes(32));
-            $db->set($username . '_token', $token);
+            $token = base64_encode($username . ':' . time());
             echo json_encode([
                 'success' => true,
                 'message' => '登录成功',
