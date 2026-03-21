@@ -10,7 +10,9 @@
 > 一个跨平台、现代化的座位表可视化编辑器。  
 > 支持在浏览器直接使用，也可下载 Windows 纯净桌面版（轻量级 Tauri 版 和 独立 Electron 版）。
 
-**在线体验（保持最新）：** <https://sce.jbyc.cc/> 
+**在线体验：** <https://sce.jbyc.cc/> 
+
+**测试版：** <https://sce.jbyc.cc/> 
 
 **离线版本不保证最新！**
 
