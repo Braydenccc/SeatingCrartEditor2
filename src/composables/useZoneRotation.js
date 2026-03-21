@@ -177,11 +177,21 @@ export function useZoneRotation() {
         const snapB = idsB.map(sid => seatMap.get(sid)?.studentId ?? null)
         idsA.forEach((sid, i) => {
           const seat = seatMap.get(sid)
-          if (seat && !seat.isEmpty) { seat.studentId = snapB[i]; moved++ }
+          if (seat && !seat.isEmpty) {
+            if (seat.studentId !== snapB[i]) {
+              seat.studentId = snapB[i]
+              moved++
+            }
+          }
         })
         idsB.forEach((sid, i) => {
           const seat = seatMap.get(sid)
-          if (seat && !seat.isEmpty) { seat.studentId = snapA[i]; moved++ }
+          if (seat && !seat.isEmpty) {
+            if (seat.studentId !== snapA[i]) {
+              seat.studentId = snapA[i]
+              moved++
+            }
+          }
         })
       } else {
         // 循环：zone[i] 的学生来自 zone[i-1]，按位置排序配对
@@ -193,7 +203,12 @@ export function useZoneRotation() {
           const src = snaps[(idx - 1 + group.zones.length) % group.zones.length]
           ids.forEach((sid, i) => {
             const seat = seatMap.get(sid)
-            if (seat && !seat.isEmpty) { seat.studentId = src[i]; moved++ }
+            if (seat && !seat.isEmpty) {
+              if (seat.studentId !== src[i]) {
+                seat.studentId = src[i]
+                moved++
+              }
+            }
           })
         })
       }

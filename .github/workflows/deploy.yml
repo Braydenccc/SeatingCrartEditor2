@@ -13,7 +13,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     container:
-      image: shangzheny/rth-host-helper:latest
+      image: shangzheny/rth-host-helper@sha256:789428be24aefa9c839075687bd8ca0e0819776ef439b81e7610a36eebc107fc
 
     steps:
       - name: Checkout repository
@@ -23,7 +23,7 @@ jobs:
       - name: Deploy (1/3)
         id: d1
         continue-on-error: true
-        uses: rthsoftware/host-auto-deploy@master
+        uses: rthsoftware/host-auto-deploy@3e5e4a34333b20df886e9366f6b37b54b2f67a1e
         env:
           RTH_API_KEY: ${{ secrets.RTH_API_KEY }}
         with:
@@ -42,7 +42,7 @@ jobs:
         id: d2
         if: steps.d1.outcome == 'failure'
         continue-on-error: true
-        uses: rthsoftware/host-auto-deploy@master
+        uses: rthsoftware/host-auto-deploy@3e5e4a34333b20df886e9366f6b37b54b2f67a1e
         env:
           RTH_API_KEY: ${{ secrets.RTH_API_KEY }}
         with:
@@ -59,7 +59,7 @@ jobs:
 
       - name: Deploy (3/3)
         if: steps.d2.outcome == 'failure'
-        uses: rthsoftware/host-auto-deploy@master
+        uses: rthsoftware/host-auto-deploy@3e5e4a34333b20df886e9366f6b37b54b2f67a1e
         env:
           RTH_API_KEY: ${{ secrets.RTH_API_KEY }}
         with:
@@ -73,7 +73,7 @@ jobs:
     if: github.ref == 'refs/heads/test'
     runs-on: ubuntu-latest
     container:
-      image: shangzheny/rth-host-helper:latest
+      image: shangzheny/rth-host-helper@sha256:789428be24aefa9c839075687bd8ca0e0819776ef439b81e7610a36eebc107fc
 
     steps:
       - name: Checkout repository
@@ -83,7 +83,7 @@ jobs:
       - name: Deploy (1/3)
         id: d1
         continue-on-error: true
-        uses: rthsoftware/host-auto-deploy@master
+        uses: rthsoftware/host-auto-deploy@3e5e4a34333b20df886e9366f6b37b54b2f67a1e
         env:
           RTH_API_KEY: ${{ secrets.RTH_API_KEY }}
         with:
@@ -102,7 +102,7 @@ jobs:
         id: d2
         if: steps.d1.outcome == 'failure'
         continue-on-error: true
-        uses: rthsoftware/host-auto-deploy@master
+        uses: rthsoftware/host-auto-deploy@3e5e4a34333b20df886e9366f6b37b54b2f67a1e
         env:
           RTH_API_KEY: ${{ secrets.RTH_API_KEY }}
         with:
@@ -119,7 +119,7 @@ jobs:
 
       - name: Deploy (3/3)
         if: steps.d2.outcome == 'failure'
-        uses: rthsoftware/host-auto-deploy@master
+        uses: rthsoftware/host-auto-deploy@3e5e4a34333b20df886e9366f6b37b54b2f67a1e
         env:
           RTH_API_KEY: ${{ secrets.RTH_API_KEY }}
         with:
