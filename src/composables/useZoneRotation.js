@@ -1,29 +1,63 @@
 import { ref } from 'vue'
 
 /**
- * 选区轮换（重构版）
- *
- * 数据结构：
- *   rotGroups[].zones[]   — 选区直接嵌入组内，无独立全局选区列表
- *   editingZoneId         — 当前正在编辑（点击选座）的选区 ID（跨组全局唯一）
- *
- * 轮换组 RotGroup: { id, name, type: 'cycle'|'swap', zones: RotZone[] }
- * 轮换选区 RotZone: { id, name, seatIds: string[] }
+ * 选区轮换（重构 v2）
+ * - 选区嵌入组内，无全局列表
+ * - editingZoneId：当前正在编辑（选座）的选区 ID
+ * - 高亮仅在编辑任意选区时显示，且显示所有区
+ * - applyZoneRotation 按座位坐标排序，消除点击顺序影响
  */
 
 const rotGroups = ref([])
 let nextGroupId = 1
-let nextZoneId = 1
+let nextZoneId = 1   // 全局递增，避免选区名重复
 
-// 当前正在编辑座位的选区 ID（全局唯一，跨组追踪）
 const editingZoneId = ref(null)
 
-// 调色板：为各选区分配颜色（按全局遍历顺序索引）
+// ——— 调色板 ———
 const PALETTE = [
-  '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A',
-  '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E2',
-  '#F4845F', '#52B788'
+  '#EF4444', '#3B82F6', '#10B981', '#F59E0B',
+  '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16',
+  '#F97316', '#14B8A6'
 ]
+
+// ——— 座位坐标解析与排序 ———
+const parseSeatPos = (seatId) => {
+  const p = seatId.split('-').map(Number)
+  return { g: p[1], c: p[2], r: p[3] }
+}
+
+/** 按座位在表中的物理位置（组→列→行）排序 */
+const sortedBySeatPos = (seatIds) =>
+  [...seatIds].sort((a, b) => {
+    const pa = parseSeatPos(a), pb = parseSeatPos(b)
+    return pa.g - pb.g || pa.c - pb.c || pa.r - pb.r
+  })
+
+// ——— 颜色辅助 ———
+/** 获取某个 zone 的颜色（按跨组全局索引） */
+const getZoneColor = (groupId, zoneId) => {
+  let idx = 0
+  for (const g of rotGroups.value) {
+    for (const z of g.zones) {
+      if (g.id === groupId && z.id === zoneId) return PALETTE[idx % PALETTE.length]
+      idx++
+    }
+  }
+  return '#ccc'
+}
+
+/** 获取所有 zone 的颜色 Map：zoneId → color */
+const buildZoneColorMap = () => {
+  const map = new Map()
+  let idx = 0
+  for (const g of rotGroups.value) {
+    for (const z of g.zones) {
+      map.set(z.id, PALETTE[idx++ % PALETTE.length])
+    }
+  }
+  return map
+}
 
 export function useZoneRotation() {
 
@@ -41,38 +75,32 @@ export function useZoneRotation() {
   }
 
   const deleteRotGroup = (groupId) => {
-    // 若删除的组内含有正在编辑的选区，清空编辑状态
-    const group = rotGroups.value.find(g => g.id === groupId)
-    if (group?.zones.some(z => z.id === editingZoneId.value)) {
-      editingZoneId.value = null
-    }
-    rotGroups.value = rotGroups.value.filter(g => g.id !== groupId)
+    const g = rotGroups.value.find(x => x.id === groupId)
+    if (g?.zones.some(z => z.id === editingZoneId.value)) editingZoneId.value = null
+    rotGroups.value = rotGroups.value.filter(x => x.id !== groupId)
   }
 
   const updateRotGroup = (groupId, updates) => {
-    const group = rotGroups.value.find(g => g.id === groupId)
-    if (group) Object.assign(group, updates)
+    const g = rotGroups.value.find(x => x.id === groupId)
+    if (g) Object.assign(g, updates)
   }
 
   // ==================== 组内选区 ====================
 
-  /** 在指定组内新建一个选区，并自动选中进入编辑模式 */
   const addZoneToGroup = (groupId) => {
     const group = rotGroups.value.find(g => g.id === groupId)
     if (!group) return null
-    const zone = {
-      id: nextZoneId++,
-      name: `选区 ${group.zones.length + 1}`,
-      seatIds: []
-    }
+    const id = nextZoneId++
+    // 同组内避免重名：用全局 id 作名称尾缀
+    const zone = { id, name: `选区 ${id}`, seatIds: [] }
     group.zones.push(zone)
-    editingZoneId.value = zone.id
+    editingZoneId.value = id
     return zone
   }
 
   const deleteZoneFromGroup = (groupId, zoneId) => {
-    const group = rotGroups.value.find(g => g.id === groupId)
-    if (group) group.zones = group.zones.filter(z => z.id !== zoneId)
+    const g = rotGroups.value.find(x => x.id === groupId)
+    if (g) g.zones = g.zones.filter(z => z.id !== zoneId)
     if (editingZoneId.value === zoneId) editingZoneId.value = null
   }
 
@@ -82,45 +110,36 @@ export function useZoneRotation() {
 
   const clearEditingZone = () => { editingZoneId.value = null }
 
-  /** 在正在编辑的选区内切换某个座位的状态 */
   const toggleSeatInEditingZone = (seatId) => {
     if (!editingZoneId.value) return
-    for (const group of rotGroups.value) {
-      const zone = group.zones.find(z => z.id === editingZoneId.value)
-      if (zone) {
-        const idx = zone.seatIds.indexOf(seatId)
-        if (idx >= 0) zone.seatIds.splice(idx, 1)
-        else zone.seatIds.push(seatId)
-        return
-      }
+    for (const g of rotGroups.value) {
+      const z = g.zones.find(z => z.id === editingZoneId.value)
+      if (!z) continue
+      const idx = z.seatIds.indexOf(seatId)
+      if (idx >= 0) z.seatIds.splice(idx, 1)
+      else z.seatIds.push(seatId)
+      return
     }
   }
 
-  /** 返回 seatId → color 的 Map（所有组内所有选区高亮） */
+  // ==================== 高亮 ====================
+
+  /**
+   * 返回 seatId → color 的 Map。
+   * - 不在编辑任何选区时：返回空 Map（隐藏所有图案）
+   * - 编辑任意选区时：显示所有组内所有选区
+   */
   const getRotZoneHighlights = () => {
     const map = new Map()
-    let colorIdx = 0
-    for (const group of rotGroups.value) {
-      for (const zone of group.zones) {
-        const color = PALETTE[colorIdx++ % PALETTE.length]
-        zone.seatIds.forEach(sid => map.set(sid, color))
+    if (!editingZoneId.value) return map   // 非编辑状态不显示
+    const colorMap = buildZoneColorMap()
+    for (const g of rotGroups.value) {
+      for (const z of g.zones) {
+        const color = colorMap.get(z.id) ?? '#ccc'
+        z.seatIds.forEach(sid => map.set(sid, color))
       }
     }
     return map
-  }
-
-  /** 获取某个 zone 的颜色 */
-  const getZoneColor = (groupId, zoneId) => {
-    let colorIdx = 0
-    for (const group of rotGroups.value) {
-      for (const zone of group.zones) {
-        if (group.id === groupId && zone.id === zoneId) {
-          return PALETTE[colorIdx % PALETTE.length]
-        }
-        colorIdx++
-      }
-    }
-    return '#ccc'
   }
 
   // ==================== 校验 ====================
@@ -150,25 +169,29 @@ export function useZoneRotation() {
       if (!valid) { errors.push(`[${group.name}] ${error}`); continue }
 
       if (group.type === 'swap') {
-        const zA = group.zones[0]
-        const zB = group.zones[1]
-        const snapA = zA.seatIds.map(sid => seatMap.get(sid)?.studentId ?? null)
-        const snapB = zB.seatIds.map(sid => seatMap.get(sid)?.studentId ?? null)
-        zA.seatIds.forEach((sid, i) => {
+        // 互换：先按位置排序再配对，消除点击顺序影响
+        const zA = group.zones[0], zB = group.zones[1]
+        const idsA = sortedBySeatPos(zA.seatIds)
+        const idsB = sortedBySeatPos(zB.seatIds)
+        const snapA = idsA.map(sid => seatMap.get(sid)?.studentId ?? null)
+        const snapB = idsB.map(sid => seatMap.get(sid)?.studentId ?? null)
+        idsA.forEach((sid, i) => {
           const seat = seatMap.get(sid)
           if (seat && !seat.isEmpty) { seat.studentId = snapB[i]; moved++ }
         })
-        zB.seatIds.forEach((sid, i) => {
+        idsB.forEach((sid, i) => {
           const seat = seatMap.get(sid)
           if (seat && !seat.isEmpty) { seat.studentId = snapA[i]; moved++ }
         })
       } else {
-        const snaps = group.zones.map(z =>
-          z.seatIds.map(sid => seatMap.get(sid)?.studentId ?? null)
+        // 循环：zone[i] 的学生来自 zone[i-1]，按位置排序配对
+        const zoneSortedIds = group.zones.map(z => sortedBySeatPos(z.seatIds))
+        const snaps = zoneSortedIds.map(ids =>
+          ids.map(sid => seatMap.get(sid)?.studentId ?? null)
         )
-        group.zones.forEach((zone, idx) => {
+        zoneSortedIds.forEach((ids, idx) => {
           const src = snaps[(idx - 1 + group.zones.length) % group.zones.length]
-          zone.seatIds.forEach((sid, i) => {
+          ids.forEach((sid, i) => {
             const seat = seatMap.get(sid)
             if (seat && !seat.isEmpty) { seat.studentId = src[i]; moved++ }
           })
@@ -181,9 +204,9 @@ export function useZoneRotation() {
 
   const cleanupInvalidRotSeats = (validSeatIds) => {
     const validSet = new Set(validSeatIds)
-    for (const group of rotGroups.value) {
-      for (const zone of group.zones) {
-        zone.seatIds = zone.seatIds.filter(sid => validSet.has(sid))
+    for (const g of rotGroups.value) {
+      for (const z of g.zones) {
+        z.seatIds = z.seatIds.filter(sid => validSet.has(sid))
       }
     }
   }
@@ -208,9 +231,12 @@ export function useZoneRotation() {
     toggleSeatInEditingZone,
     getRotZoneHighlights,
     getZoneColor,
+    buildZoneColorMap,
     validateGroup,
     applyZoneRotation,
     cleanupInvalidRotSeats,
-    clearAllRotData
+    clearAllRotData,
+    parseSeatPos,
+    PALETTE,
   }
 }

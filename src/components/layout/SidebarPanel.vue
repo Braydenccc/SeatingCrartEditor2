@@ -158,6 +158,12 @@
 
           <!-- 选区轮换面板 -->
           <template v-if="shiftMode === 'zone'">
+            <!-- 编辑状态提示 -->
+            <div v-if="editingZoneId" class="zone-rot-editing-hint">
+              ✏ 正在编辑选区，请在座位表上点击座位以选入/取消
+              <button class="zone-rot-hint-close" @click="handleStopEditing">完成</button>
+            </div>
+
             <div class="options-group">
               <div class="zone-rot-section-header">
                 <span class="zone-rot-section-title">轮换组</span>
@@ -172,12 +178,13 @@
               </div>
 
               <div v-for="group in rotGroups" :key="group.id" class="zone-rot-group">
-                <!-- 组标题 -->
+                <!-- 组标题：inline 重命名 input -->
                 <div class="zone-rot-group-header">
                   <span class="zone-rot-type-badge" :class="group.type">
                     {{ group.type === 'cycle' ? '循环' : '互换' }}
                   </span>
-                  <span class="zone-rot-name">{{ group.name }}</span>
+                  <input class="zone-rot-name-input" v-model="group.name"
+                    @click.stop title="点击修改组名" />
                   <button class="zone-rot-del" @click="handleDeleteGroup(group.id)">✕</button>
                 </div>
 
@@ -185,10 +192,15 @@
                 <div class="zone-rot-group-zones">
                   <div v-for="(zone, idx) in group.zones" :key="zone.id"
                     class="zone-rot-group-zone-row"
-                    :class="{ editing: editingZoneId === zone.id }"
-                    @click="handleSelectEditingZone(zone.id)">
-                    <span class="zone-rot-dot" :style="{ background: getZoneColor(group.id, zone.id) }"></span>
-                    <span class="zone-rot-zone-label">{{ zone.name }}</span>
+                    :class="{ editing: editingZoneId === zone.id }">
+                    <!-- 颜色点：点击切换编辑此选区 -->
+                    <span class="zone-rot-dot zone-rot-dot-btn"
+                      :style="{ background: getZoneColor(group.id, zone.id) }"
+                      @click="handleSelectEditingZone(zone.id)"
+                      :title="editingZoneId === zone.id ? '点击停止编辑' : '点击开始编辑此选区'">
+                    </span>
+                    <!-- 选区名：inline input 重命名 -->
+                    <input class="zone-rot-zone-name-input" v-model="zone.name" @click.stop/>
                     <!-- 循环箭头 -->
                     <span v-if="group.type === 'cycle'" class="zone-rot-arrow">
                       {{ idx < group.zones.length - 1 ? '→' : '↩' }}
@@ -214,6 +226,7 @@
               <span>应用选区轮换</span>
             </button>
           </template>
+
 
 
         </div>
@@ -384,6 +397,11 @@ const handleSelectEditingZone = (zoneId) => {
   const wasEditing = editingZoneId.value === zoneId
   selectEditingZone(zoneId)
   setMode(wasEditing ? EditMode.NORMAL : EditMode.ZONE_EDIT)
+}
+
+const handleStopEditing = () => {
+  clearEditingZone()
+  setMode(EditMode.NORMAL)
 }
 
 /** 获取轮换组的校验错误信息 */
@@ -2186,6 +2204,80 @@ const formatLogTime = (timestamp) => {
   background: rgba(35,88,123,0.1);
   border-radius: 6px;
   outline: 2px solid rgba(35,88,123,0.3);
+}
+
+/* 编辑状态提示条 */
+.zone-rot-editing-hint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 10px;
+  background: rgba(35,88,123,0.1);
+  border: 1px solid rgba(35,88,123,0.25);
+  border-radius: 8px;
+  font-size: 12px;
+  color: #23587b;
+  margin-bottom: 8px;
+}
+
+.zone-rot-hint-close {
+  padding: 2px 8px;
+  background: #23587b;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.zone-rot-hint-close:hover { background: #1a4460; }
+
+/* 组 / 选区重命名 inline input */
+.zone-rot-name-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 500;
+  color: #333;
+  outline: none;
+  padding: 0 2px;
+  cursor: text;
+  min-width: 0;
+}
+.zone-rot-name-input:focus {
+  background: #fff;
+  border-bottom: 1.5px solid #23587b;
+}
+
+.zone-rot-zone-name-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 12px;
+  color: #444;
+  outline: none;
+  padding: 0 2px;
+  cursor: text;
+  min-width: 0;
+}
+.zone-rot-zone-name-input:focus {
+  background: #fff;
+  border-bottom: 1px solid #23587b;
+}
+
+/* 颜色点：可交互（切换编辑） */
+.zone-rot-dot-btn {
+  cursor: pointer;
+  transition: transform 0.15s, filter 0.15s;
+  flex-shrink: 0;
+}
+.zone-rot-dot-btn:hover {
+  transform: scale(1.3);
+  filter: brightness(0.85);
 }
 
 </style>
