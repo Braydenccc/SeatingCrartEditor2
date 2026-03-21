@@ -67,6 +67,7 @@ const server = http.createServer((req, res) => {
       const ext = path.extname(filePath).toLowerCase();
       const type = mime[ext] || 'application/octet-stream';
       res.setHeader('Content-Type', type);
+      res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'");
       res.end(data);
     });
   } catch (e) {
