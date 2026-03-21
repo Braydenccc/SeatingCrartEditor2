@@ -30,6 +30,7 @@ import { computed, ref, onUnmounted } from 'vue'
 import { useStudentData } from '@/composables/useStudentData'
 import { useEditMode } from '@/composables/useEditMode'
 import { useZoneData } from '@/composables/useZoneData'
+import { useZoneRotation } from '@/composables/useZoneRotation'
 
 const props = defineProps({
   seat: {
@@ -43,6 +44,7 @@ const emit = defineEmits(['assign-student', 'toggle-empty', 'clear-seat', 'swap-
 const { students, selectedStudentId } = useStudentData()
 const { currentMode, firstSelectedSeat, EditMode } = useEditMode()
 const { visibleZoneSeats, selectedZoneId, toggleSeatInZone } = useZoneData()
+const { editingZoneId, getRotZoneHighlights, toggleSeatInEditingZone } = useZoneRotation()
 
 const isDragOver = ref(false)
 const isDragging = ref(false)
@@ -75,13 +77,17 @@ const isFirstSelected = computed(() => {
   return currentMode.value === EditMode.SWAP && firstSelectedSeat.value === props.seat.id
 })
 
+const rotZoneHighlights = computed(() => getRotZoneHighlights())
+
 const zoneHighlight = computed(() => {
-  return visibleZoneSeats.value.has(props.seat.id)
+  return visibleZoneSeats.value.has(props.seat.id) ||
+    rotZoneHighlights.value.has(props.seat.id)
 })
 
 const zoneHighlightStyle = computed(() => {
   if (!zoneHighlight.value) return {}
-  const color = visibleZoneSeats.value.get(props.seat.id)
+  const color = visibleZoneSeats.value.get(props.seat.id) ||
+    rotZoneHighlights.value.get(props.seat.id)
   return { '--zone-color': color }
 })
 
@@ -139,6 +145,8 @@ const handleClick = () => {
     case EditMode.ZONE_EDIT:
       if (selectedZoneId.value) {
         toggleSeatInZone(selectedZoneId.value, props.seat.id)
+      } else if (editingZoneId.value) {
+        toggleSeatInEditingZone(props.seat.id)
       }
       break
   }

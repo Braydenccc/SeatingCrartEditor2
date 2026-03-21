@@ -1,19 +1,122 @@
 name: Deploy to Retinbox Web Hosting
 
-on: push
+on:
+  push:
+    branches:
+      - main
+      - test
 
 jobs:
-  deploy:
+  # ── 生产环境：main 分支 → sce.jbyc.cc ─────────────────────────────────────
+  deploy-production:
+    name: 🚀 Production (sce.jbyc.cc)
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     container:
       image: shangzheny/rth-host-helper:latest
 
     steps:
-      - name: Deploy to Retinbox Web Hosting
+      # 第 1 次尝试
+      - name: Deploy (1/3)
+        id: d1
+        continue-on-error: true
         uses: rthsoftware/host-auto-deploy@master
         env:
           RTH_API_KEY: ${{ secrets.RTH_API_KEY }}
         with:
           site: "sce.jbyc.cc"
-          build: "build"
+          build: "build:web"
+          outdir: "dist"
+
+      # 第 2 次尝试（仅在第 1 次失败后执行）
+      - name: Wait before retry (1→2)
+        if: steps.d1.outcome == 'failure'
+        run: |
+          echo "::warning::Attempt 1 failed, retrying in 15s..."
+          sleep 15
+
+      - name: Deploy (2/3)
+        id: d2
+        if: steps.d1.outcome == 'failure'
+        continue-on-error: true
+        uses: rthsoftware/host-auto-deploy@master
+        env:
+          RTH_API_KEY: ${{ secrets.RTH_API_KEY }}
+        with:
+          site: "sce.jbyc.cc"
+          build: "build:web"
+          outdir: "dist"
+
+      # 第 3 次尝试（仅在第 2 次失败后执行）
+      - name: Wait before retry (2→3)
+        if: steps.d2.outcome == 'failure'
+        run: |
+          echo "::warning::Attempt 2 failed, retrying in 15s..."
+          sleep 15
+
+      - name: Deploy (3/3)
+        if: steps.d2.outcome == 'failure'
+        uses: rthsoftware/host-auto-deploy@master
+        env:
+          RTH_API_KEY: ${{ secrets.RTH_API_KEY }}
+        with:
+          site: "sce.jbyc.cc"
+          build: "build:web"
+          outdir: "dist"
+
+  # ── 测试环境：test 分支 → test.sce.jbyc.cc ────────────────────────────────
+  deploy-staging:
+    name: 🧪 Staging (test.sce.jbyc.cc)
+    if: github.ref == 'refs/heads/test'
+    runs-on: ubuntu-latest
+    container:
+      image: shangzheny/rth-host-helper:latest
+
+    steps:
+      # 第 1 次尝试
+      - name: Deploy (1/3)
+        id: d1
+        continue-on-error: true
+        uses: rthsoftware/host-auto-deploy@master
+        env:
+          RTH_API_KEY: ${{ secrets.RTH_API_KEY }}
+        with:
+          site: "test.sce.jbyc.cc"
+          build: "build:web"
+          outdir: "dist"
+
+      # 第 2 次尝试
+      - name: Wait before retry (1→2)
+        if: steps.d1.outcome == 'failure'
+        run: |
+          echo "::warning::Attempt 1 failed, retrying in 15s..."
+          sleep 15
+
+      - name: Deploy (2/3)
+        id: d2
+        if: steps.d1.outcome == 'failure'
+        continue-on-error: true
+        uses: rthsoftware/host-auto-deploy@master
+        env:
+          RTH_API_KEY: ${{ secrets.RTH_API_KEY }}
+        with:
+          site: "test.sce.jbyc.cc"
+          build: "build:web"
+          outdir: "dist"
+
+      # 第 3 次尝试
+      - name: Wait before retry (2→3)
+        if: steps.d2.outcome == 'failure'
+        run: |
+          echo "::warning::Attempt 2 failed, retrying in 15s..."
+          sleep 15
+
+      - name: Deploy (3/3)
+        if: steps.d2.outcome == 'failure'
+        uses: rthsoftware/host-auto-deploy@master
+        env:
+          RTH_API_KEY: ${{ secrets.RTH_API_KEY }}
+        with:
+          site: "test.sce.jbyc.cc"
+          build: "build:web"
           outdir: "dist"
