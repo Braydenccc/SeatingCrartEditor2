@@ -24,6 +24,38 @@
             </div>
           </div>
         </div>
+
+        <!-- 选区轮换 SVG 箭头叠加层 -->
+        <svg v-if="showOverlay" class="zone-arrows-svg" aria-hidden="true">
+          <defs>
+            <!-- 为每条箭头定义专属 marker，避免颜色冲突 -->
+            <template v-for="(gd, gi) in zoneArrowData" :key="gi">
+              <marker v-for="arr in gd.arrows" :key="arr.markerId"
+                :id="arr.markerId" markerWidth="8" markerHeight="6"
+                refX="7" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+                <polygon :fill="arr.color" points="0 0, 8 3, 0 6"/>
+              </marker>
+            </template>
+          </defs>
+
+          <template v-for="(gd, gi) in zoneArrowData" :key="gi">
+            <!-- 箭头线 -->
+            <line v-for="(arr, ai) in gd.arrows" :key="ai"
+              :x1="arr.x1" :y1="arr.y1" :x2="arr.x2" :y2="arr.y2"
+              :stroke="arr.color" stroke-width="2.5" stroke-linecap="round"
+              :marker-end="`url(#${arr.markerId})`" opacity="0.85"/>
+
+            <!-- 各选区圆形标记 + 名称 -->
+            <g v-for="(circ, ci) in gd.circles" :key="ci">
+              <circle :cx="circ.x" :cy="circ.y" r="20"
+                :fill="circ.color" fill-opacity="0.25"
+                :stroke="circ.color" stroke-width="2.5"/>
+              <text :x="circ.x" :y="circ.y + 4"
+                text-anchor="middle" font-size="11" font-weight="600"
+                :fill="circ.color">{{ circ.label }}</text>
+            </g>
+          </template>
+        </svg>
       </div>
 
       <!-- 缩放控件 -->
@@ -49,6 +81,7 @@ import { useSeatChart } from '@/composables/useSeatChart'
 import { useEditMode } from '@/composables/useEditMode'
 import { useStudentData } from '@/composables/useStudentData'
 import { useZoom } from '@/composables/useZoom'
+import { useZoneRotation } from '@/composables/useZoneRotation'
 
 const {
   seatConfig,
@@ -416,9 +449,109 @@ const handleSwapSeat = (seatId) => {
     clearFirstSelectedSeat()
   }
 }
+
+// ==================== 选区轮换 SVG 箭头 ====================
+const { rotGroups, editingZoneId, getZoneColor, parseSeatPos, PALETTE } = useZoneRotation()
+
+// 布局常量（与 CSS 对应）
+const L = {
+  SEAT_W: 120, SEAT_H: 80,
+  COL_GAP: 16,  // .group-content gap
+  ROW_GAP: 12,  // .seat-column gap
+  GROUP_GAP: 40, // .seat-chart gap between groups
+  LABEL_H: 47,  // group label (~35px) + .seat-group gap (12px)
+  PAD_L: 20, PAD_T: 30
+}
+
+const getSeatCenter = (seatId) => {
+  const { g, c, r } = parseSeatPos(seatId)
+  const cpg = seatConfig.value.columnsPerGroup
+  const groupW = cpg * L.SEAT_W + (cpg - 1) * L.COL_GAP
+  return {
+    x: L.PAD_L + g * (groupW + L.GROUP_GAP) + c * (L.SEAT_W + L.COL_GAP) + L.SEAT_W / 2,
+    y: L.PAD_T + L.LABEL_H + r * (L.SEAT_H + L.ROW_GAP) + L.SEAT_H / 2
+  }
+}
+
+const getZoneCentroid = (zone) => {
+  if (!zone.seatIds.length) return null
+  let sx = 0, sy = 0
+  zone.seatIds.forEach(sid => { const p = getSeatCenter(sid); sx += p.x; sy += p.y })
+  return { x: sx / zone.seatIds.length, y: sy / zone.seatIds.length }
+}
+
+// 计算从 from 到 to 的调整端点（距圆心 R 处，留出箭头空间）
+const adjustLine = (from, to, R = 24, endGap = 6) => {
+  const dx = to.x - from.x, dy = to.y - from.y
+  const len = Math.sqrt(dx * dx + dy * dy)
+  if (len < 1) return { x1: from.x, y1: from.y, x2: to.x, y2: to.y }
+  return {
+    x1: from.x + dx / len * R,
+    y1: from.y + dy / len * R,
+    x2: to.x   - dx / len * (R + endGap),
+    y2: to.y   - dy / len * (R + endGap)
+  }
+}
+
+// 互换双向偏移线
+const biDirLines = (cA, cB, offset = 8) => {
+  const dx = cB.x - cA.x, dy = cB.y - cA.y
+  const len = Math.sqrt(dx * dx + dy * dy)
+  if (len < 1) return []
+  const px = -dy / len * offset, py = dx / len * offset
+  return [
+    { from: { x: cA.x + px, y: cA.y + py }, to: { x: cB.x + px, y: cB.y + py } },
+    { from: { x: cB.x - px, y: cB.y - py }, to: { x: cA.x - px, y: cA.y - py } }
+  ]
+}
+
+// 所有箭头数据（只在编辑时计算）
+const zoneArrowData = computed(() => {
+  if (!editingZoneId.value) return []
+  const res = []
+  let colorIdx = 0
+  for (const group of rotGroups.value) {
+    const zones = group.zones
+    const colors = zones.map(() => PALETTE[colorIdx++ % PALETTE.length])
+    const centroids = zones.map(z => getZoneCentroid(z))
+    if (centroids.some(c => !c) || centroids.length < 2) continue
+
+    const arrows = []
+    const circles = centroids.map((c, i) => ({ ...c, color: colors[i], label: zones[i].name }))
+
+    if (group.type === 'swap') {
+      biDirLines(centroids[0], centroids[1]).forEach(({ from, to }) => {
+        const adj = adjustLine(from, to, 24, 6)
+        arrows.push({ ...adj, color: '#6366f1', markerId: `sw-${group.id}` })
+      })
+    } else {
+      // cycle arrows: 0→1→2→...→n-1→0
+      for (let i = 0; i < centroids.length; i++) {
+        const from = centroids[i]
+        const to = centroids[(i + 1) % centroids.length]
+        const adj = adjustLine(from, to, 24, 6)
+        arrows.push({ ...adj, color: '#23587b', markerId: `cy-${group.id}-${i}` })
+      }
+    }
+    res.push({ group, circles, arrows })
+  }
+  return res
+})
+
+const showOverlay = computed(() => editingZoneId.value !== null)
 </script>
 
 <style scoped>
+.zone-arrows-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 5;
+}
+
 .seat-chart-container {
   width: 100%;
   height: 100%;

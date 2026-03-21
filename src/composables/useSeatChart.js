@@ -5,7 +5,8 @@ import { useZoneData } from './useZoneData'
 const seatConfig = ref({
   groupCount: 4,        // 大组数量
   columnsPerGroup: 2,   // 每大组的列数
-  seatsPerColumn: 7     // 每列的座位数
+  seatsPerColumn: 7,     // 每列的座位数
+  shiftDistance: 4
 })
 
 // 座位数据
@@ -115,6 +116,48 @@ export function useSeatChart() {
       const temp = seat1.studentId
       seat1.studentId = seat2.studentId
       seat2.studentId = temp
+    }
+  }
+
+  /**
+   * 将所有非空置座位上的学生进行循环换座（支持二维位移）
+   *
+   * @param {number} distance  - 行方向平移量（正=向后，负=向前）
+   * @param {number} direction - 溢出时的列偏移量（正=溢出时向左，负=向右）
+   * @param {number} colShift  - 直接列偏移量（不依赖溢出，正=向右，负=向左）
+   *
+   * 内部坐标系：
+   *   globalCol = groupIndex * columnsPerGroup + columnIndex
+   *   totalCols = groupCount * columnsPerGroup
+   */
+  const shiftSeats = (distance, direction = 0, colShift = 0) => {
+    const { groupCount, columnsPerGroup, seatsPerColumn } = seatConfig.value
+    const totalCols = groupCount * columnsPerGroup
+
+    // 1. 拍快照：记录每个非空置座位当前的学生 ID
+    const snapshot = new Map()
+    for (const seat of getAvailableSeats()) {
+      const globalCol = seat.groupIndex * columnsPerGroup + seat.columnIndex
+      snapshot.set(`${globalCol},${seat.rowIndex}`, seat.studentId)
+    }
+
+    if (snapshot.size === 0) return
+
+    // 2. 对每个目标座位，反向推算"谁应该坐到这里"
+    for (const seat of getAvailableSeats()) {
+      const globalCol = seat.groupIndex * columnsPerGroup + seat.columnIndex
+
+      // 行方向：反推源行
+      const srcRow_raw = seat.rowIndex - distance
+      const overflow = Math.floor(srcRow_raw / seatsPerColumn)
+      const srcRow = ((srcRow_raw % seatsPerColumn) + seatsPerColumn) % seatsPerColumn
+
+      // 列方向：直接列偏移 + 溢出换列（两者叠加）
+      //   colShift>0 表示学生向右移动，源在左侧（globalCol - colShift）
+      //   overflow 部分同旧逻辑
+      const srcCol = ((globalCol - colShift - overflow * direction) % totalCols + totalCols) % totalCols
+
+      seat.studentId = snapshot.get(`${srcCol},${srcRow}`) ?? null
     }
   }
 
@@ -276,6 +319,7 @@ export function useSeatChart() {
     toggleEmpty,
     clearSeat,
     swapSeats,
+    shiftSeats,
     updateConfig,
     getStudentAtSeat,
     findSeatByStudent,

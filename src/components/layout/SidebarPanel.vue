@@ -93,6 +93,142 @@
               <span>空置座位</span>
             </button>
           </div>
+          <div class="tab-header">
+            <div class="tab-header-row">
+              <h3>自动轮换</h3>
+              <div class="shift-mode-tabs">
+                <button class="shift-mode-tab" :class="{ active: shiftMode === 'shift' }" @click="shiftMode = 'shift'">位移</button>
+                <button class="shift-mode-tab" :class="{ active: shiftMode === 'zone' }" @click="shiftMode = 'zone'">选区</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 位移轮换面板 -->
+          <template v-if="shiftMode === 'shift'">
+            <div class="options-group">
+              <div class="shift-diagram">
+                <div class="diagram-center">
+                  <button class="diagram-row-btn" :class="{ active: configForm.shiftDistance < 0 }"
+                    @click="configForm.shiftDistance = -Math.abs(configForm.shiftDistance || 4)">
+                    ▲ 向前（行）
+                  </button>
+                  <div class="diagram-grid-row">
+                    <button class="diagram-col-btn" :class="{ active: configForm.shiftColShift < 0 }"
+                      @click="configForm.shiftColShift = -Math.abs(configForm.shiftColShift || 1)">◀ 左</button>
+                    <div class="diagram-grid-9">
+                      <div v-for="row in 9" :key="row" class="diagram-row-9">
+                        <div v-for="col in 9" :key="col" class="diagram-cell-sm"
+                          :class="getDiagramCellClass(col - 1, row - 1)"
+                          @click="handleDiagramClick(col - 1, row - 1)"></div>
+                      </div>
+                    </div>
+                    <button class="diagram-col-btn" :class="{ active: configForm.shiftColShift > 0 }"
+                      @click="configForm.shiftColShift = Math.abs(configForm.shiftColShift || 1)">右 ▶</button>
+                  </div>
+                  <button class="diagram-row-btn" :class="{ active: configForm.shiftDistance > 0 }"
+                    @click="configForm.shiftDistance = Math.abs(configForm.shiftDistance || 4)">
+                    ▼ 向后（行）
+                  </button>
+                </div>
+                <div class="diagram-status-bar">
+                  <span class="dot dot-red"></span> 当前
+                  <span class="dot dot-green"></span> 目标
+                  <span class="diagram-status-hint">· {{ getDiagramStatusText() }}</span>
+                </div>
+              </div>
+              <div class="shift-inputs-row">
+                <div class="input-group-compact">
+                  <label for="shiftDistance">行偏移</label>
+                  <input id="shiftDistance" v-model.number="configForm.shiftDistance" type="number"/>
+                </div>
+                <div class="input-group-compact">
+                  <label for="shiftColShift">列直移</label>
+                  <input id="shiftColShift" v-model.number="configForm.shiftColShift" type="number"/>
+                </div>
+                <div class="input-group-compact">
+                  <label for="shiftDirection" title="行溢出边界时额外偏移的列数（正=左，负=右）">溢出列移</label>
+                  <input id="shiftDirection" v-model.number="configForm.shiftDirection" type="number"/>
+                </div>
+              </div>
+              <button id="shiftSeat" class="option-button primary" @click="applySeatShift">
+                <span>应用轮换</span>
+              </button>
+            </div>
+          </template>
+
+          <!-- 选区轮换面板 -->
+          <template v-if="shiftMode === 'zone'">
+            <!-- 编辑状态提示 -->
+            <div v-if="editingZoneId" class="zone-rot-editing-hint">
+              ✏ 正在编辑选区，请在座位表上点击座位以选入/取消
+              <button class="zone-rot-hint-close" @click="handleStopEditing">完成</button>
+            </div>
+
+            <div class="options-group">
+              <div class="zone-rot-section-header">
+                <span class="zone-rot-section-title">轮换组</span>
+                <div style="display:flex;gap:4px">
+                  <button class="zone-rot-add-btn" @click="handleAddGroup('cycle')">＋ 循环</button>
+                  <button class="zone-rot-add-btn" @click="handleAddGroup('swap')">＋ 互换</button>
+                </div>
+              </div>
+
+              <div v-if="rotGroups.length === 0" class="zone-rot-empty">
+                暂无轮换组，点击「＋ 循环」或「＋ 互换」新建
+              </div>
+
+              <div v-for="group in rotGroups" :key="group.id" class="zone-rot-group">
+                <!-- 组标题：inline 重命名 input -->
+                <div class="zone-rot-group-header">
+                  <span class="zone-rot-type-badge" :class="group.type">
+                    {{ group.type === 'cycle' ? '循环' : '互换' }}
+                  </span>
+                  <input class="zone-rot-name-input" v-model="group.name"
+                    @click.stop title="点击修改组名" />
+                  <button class="zone-rot-del" @click="handleDeleteGroup(group.id)">✕</button>
+                </div>
+
+                <!-- 组内选区列表 -->
+                <div class="zone-rot-group-zones">
+                  <div v-for="(zone, idx) in group.zones" :key="zone.id"
+                    class="zone-rot-group-zone-row"
+                    :class="{ editing: editingZoneId === zone.id }">
+                    <!-- 颜色点：点击切换编辑此选区 -->
+                    <span class="zone-rot-dot zone-rot-dot-btn"
+                      :style="{ background: getZoneColor(group.id, zone.id) }"
+                      @click="handleSelectEditingZone(zone.id)"
+                      :title="editingZoneId === zone.id ? '点击停止编辑' : '点击开始编辑此选区'">
+                    </span>
+                    <!-- 选区名：inline input 重命名 -->
+                    <input class="zone-rot-zone-name-input" v-model="zone.name" @click.stop/>
+                    <!-- 循环箭头 -->
+                    <span v-if="group.type === 'cycle'" class="zone-rot-arrow">
+                      {{ idx < group.zones.length - 1 ? '→' : '↩' }}
+                    </span>
+                    <!-- 互换箭头 -->
+                    <span v-if="group.type === 'swap' && idx === 0" class="zone-rot-arrow">⇄</span>
+                    <span class="zone-rot-count">{{ zone.seatIds.length }}座</span>
+                    <button class="zone-rot-del" @click.stop="handleDeleteZoneFromGroup(group.id, zone.id)">✕</button>
+                  </div>
+
+                  <!-- 添加选区按钮（在组内） -->
+                  <button class="zone-rot-add-zone-btn" @click="handleAddZoneToGroup(group.id)">
+                    ＋ 添加选区
+                  </button>
+
+                  <!-- 校验错误 -->
+                  <div v-if="getGroupError(group)" class="zone-rot-group-error">⚠ {{ getGroupError(group) }}</div>
+                </div>
+              </div>
+            </div>
+
+            <button class="option-button primary" @click="handleApplyZoneRotation">
+              <span>应用选区轮换</span>
+            </button>
+          </template>
+
+
+
         </div>
 
         <!-- 自动调位、随机排位、座位选区、座位绑定 -->
@@ -184,7 +320,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { useSidebar } from '@/composables/useSidebar'
 import { useSeatChart } from '@/composables/useSeatChart'
 import { useEditMode } from '@/composables/useEditMode'
@@ -199,6 +335,7 @@ import { useLogger } from '@/composables/useLogger'
 import { useConfirmAction } from '@/composables/useConfirmAction'
 import { useSeatRelation } from '@/composables/useSeatRelation'
 import { useZoneData } from '@/composables/useZoneData'
+import { useZoneRotation } from '@/composables/useZoneRotation'
 import ZoneList from '../zone/ZoneList.vue'
 import SeatRelationEditor from '../relation/SeatRelationEditor.vue'
 import ExportDialog from './ExportPreview.vue'
@@ -206,7 +343,7 @@ import CloudWorkspaceDialog from '../workspace/CloudWorkspaceDialog.vue'
 import { useAuth } from '@/composables/useAuth'
 
 const { activeTab, mobileMenuOpen, setActiveTab, closeMobileMenu } = useSidebar()
-const { seatConfig, updateConfig, clearAllSeats, seats } = useSeatChart()
+const { seatConfig, updateConfig, clearAllSeats, seats, shiftSeats } = useSeatChart()
 const { currentMode, setMode, toggleEmptyEditMode, EditMode } = useEditMode()
 const { isAssigning, runAssignment } = useAssignment()
 const { tags, addTag, clearAllTags } = useTagData()
@@ -219,6 +356,76 @@ const { logs, success, warning, error, clearLogs } = useLogger()
 const { requestConfirm, isConfirming } = useConfirmAction()
 const { isLoggedIn, isLoginDialogVisible } = useAuth()
 
+// ==================== 选区轮换 ====================
+const {
+  rotGroups,
+  editingZoneId,
+  addRotGroup,
+  deleteRotGroup,
+  addZoneToGroup,
+  deleteZoneFromGroup,
+  selectEditingZone,
+  clearEditingZone,
+  getZoneColor,
+  validateGroup,
+  applyZoneRotation,
+} = useZoneRotation()
+
+// 轮换面板 Tab（'shift' | 'zone'）
+const shiftMode = ref('shift')
+
+// ——— 轮换组 handlers ———
+const handleAddGroup = (type) => addRotGroup(type)
+const handleDeleteGroup = (groupId) => {
+  deleteRotGroup(groupId)
+  // 若删除后已无编辑选区，退出 ZONE_EDIT 模式
+  if (editingZoneId.value === null) setMode(EditMode.NORMAL)
+}
+
+// ——— 组内选区 handlers ———
+const handleAddZoneToGroup = (groupId) => {
+  addZoneToGroup(groupId)  // 自动设置 editingZoneId
+  setMode(EditMode.ZONE_EDIT)
+}
+
+const handleDeleteZoneFromGroup = (groupId, zoneId) => {
+  deleteZoneFromGroup(groupId, zoneId)
+  if (editingZoneId.value === null) setMode(EditMode.NORMAL)
+}
+
+const handleSelectEditingZone = (zoneId) => {
+  const wasEditing = editingZoneId.value === zoneId
+  selectEditingZone(zoneId)
+  setMode(wasEditing ? EditMode.NORMAL : EditMode.ZONE_EDIT)
+}
+
+const handleStopEditing = () => {
+  clearEditingZone()
+  setMode(EditMode.NORMAL)
+}
+
+/** 获取轮换组的校验错误信息 */
+const getGroupError = (group) => {
+  const { valid, error } = validateGroup(group)
+  return valid ? '' : error
+}
+
+/** 执行选区轮换 */
+const handleApplyZoneRotation = () => {
+  if (rotGroups.value.length === 0) {
+    warning('请先创建轮换组')
+    return
+  }
+  const seatMapArg = new Map(seats.value.map(s => [s.id, s]))
+  const { moved, errors } = applyZoneRotation(seatMapArg)
+  errors.forEach(e => warning(e))
+  if (moved > 0) {
+    success(`选区轮换完成，已移动 ${moved} 个座位的学生`)
+  } else if (errors.length === 0) {
+    warning('没有学生被移动，请检查选区是否包含学生')
+  }
+}
+
 const tabs = [
   { id: 1, label: '文件', icon: '📁' },
   { id: 2, label: '编辑', icon: '✏️' },
@@ -230,7 +437,10 @@ const tabs = [
 const configForm = ref({
   groupCount: 3,
   columnsPerGroup: 2,
-  seatsPerColumn: 6
+  seatsPerColumn: 6,
+  shiftDistance: 4,
+  shiftColShift: 0,
+  shiftDirection: 0,
 })
 
 // 联系编辑器显示状态
@@ -394,10 +604,102 @@ const handleExportExcel = () => {
   }
 }
 
-// 初始化时从 seatConfig 读取当前配置
+const applySeatShift = () => {
+  const shiftDistance = configForm.value.shiftDistance || 0
+  const shiftColShift = configForm.value.shiftColShift || 0
+  const shiftDirection = configForm.value.shiftDirection || 0
+  if (shiftDistance === 0 && shiftColShift === 0) {
+    warning('行偏移和列偏移不能同时为 0')
+    return
+  }
+  shiftSeats(shiftDistance, shiftDirection, shiftColShift)
+  const parts = []
+  if (shiftDistance !== 0) parts.push(`向${shiftDistance > 0 ? '后' : '前'} ${Math.abs(shiftDistance)} 行`)
+  if (shiftColShift !== 0) parts.push(`向${shiftColShift > 0 ? '右' : '左'} ${Math.abs(shiftColShift)} 列`)
+  if (shiftDirection !== 0) parts.push(`溢出时向${shiftDirection > 0 ? '左' : '右'}偏 ${Math.abs(shiftDirection)} 列`)
+  success(`座位轮换完成：${parts.join('，')}`)
+}
+
+// 初始化时从 seatConfig 读取当前配置（只合并座位结构字段，保留轮换专属字段）
 onMounted(() => {
-  configForm.value = { ...seatConfig.value }
+  configForm.value = { ...configForm.value, ...seatConfig.value }
 })
+
+// ==================== 示意图辅助函数 ====================
+const DIAGRAM_SIZE = 9
+const DIAGRAM_CENTER = 4 // 0-indexed 中心 (4, 4)
+
+/**
+ * 计算示意图目标格子位置（正向公式）
+ * 考虑行偏移 distance、直接列偏移 colShift、溢出方向 direction
+ */
+const getDiagramTarget = () => {
+  const distance = configForm.value.shiftDistance || 0
+  const colShift = configForm.value.shiftColShift || 0
+  const direction = configForm.value.shiftDirection || 0
+  // 行方向
+  const dstRow_raw = DIAGRAM_CENTER + distance
+  const overflow = Math.floor(dstRow_raw / DIAGRAM_SIZE)
+  const dstRow = ((dstRow_raw % DIAGRAM_SIZE) + DIAGRAM_SIZE) % DIAGRAM_SIZE
+  // 列方向 = 直接列偏移 + 溢出换列
+  const dstCol = ((DIAGRAM_CENTER + colShift + overflow * direction) % DIAGRAM_SIZE + DIAGRAM_SIZE) % DIAGRAM_SIZE
+  return { dstRow, dstCol, overflow }
+}
+
+/**
+ * 路径格子集合：仅在纯行移动（无列偏移、无列溢出）时显示连线
+ */
+const getDiagramPathSet = () => {
+  const distance = configForm.value.shiftDistance || 0
+  const colShift = configForm.value.shiftColShift || 0
+  if (distance === 0 || colShift !== 0) return new Set()
+  const { dstRow, dstCol, overflow } = getDiagramTarget()
+  if (overflow !== 0 || dstCol !== DIAGRAM_CENTER) return new Set()
+  const pathSet = new Set()
+  const rowMin = Math.min(DIAGRAM_CENTER, dstRow)
+  const rowMax = Math.max(DIAGRAM_CENTER, dstRow)
+  for (let r = rowMin + 1; r < rowMax; r++) {
+    pathSet.add(`${DIAGRAM_CENTER},${r}`)
+  }
+  return pathSet
+}
+
+/** 返回格子的 CSS class */
+const getDiagramCellClass = (col, row) => {
+  const distance = configForm.value.shiftDistance || 0
+  const colShift = configForm.value.shiftColShift || 0
+  if (col === DIAGRAM_CENTER && row === DIAGRAM_CENTER) return 'cell-current'
+  if (distance === 0 && colShift === 0) return ''
+  const { dstRow, dstCol } = getDiagramTarget()
+  if (col === dstCol && row === dstRow) return 'cell-target'
+  const pathSet = getDiagramPathSet()
+  if (pathSet.has(`${col},${row}`)) return 'cell-path'
+  return ''
+}
+
+/**
+ * 点击格子：直接设置行偏移 + 列偏移
+ * 不再从点击位置推断 direction（direction 由专设输入控制）
+ */
+const handleDiagramClick = (col, row) => {
+  configForm.value.shiftDistance = row - DIAGRAM_CENTER
+  configForm.value.shiftColShift = col - DIAGRAM_CENTER
+}
+
+/** 状态说明文字 */
+const getDiagramStatusText = () => {
+  const d = configForm.value.shiftDistance || 0
+  const c = configForm.value.shiftColShift || 0
+  const dir = configForm.value.shiftDirection || 0
+  if (d === 0 && c === 0) return '点击格子选择位移目标'
+  const { overflow } = getDiagramTarget()
+  const parts = []
+  if (d !== 0) parts.push(`${d > 0 ? '↓' : '↑'}${Math.abs(d)}行`)
+  if (c !== 0) parts.push(`${c > 0 ? '→' : '←'}${Math.abs(c)}列`)
+  if (overflow !== 0 && dir !== 0) parts.push(`溢出→${dir > 0 ? '←' : '→'}${Math.abs(overflow * dir)}列`)
+  return parts.join(' + ')
+}
+
 
 // 快速导出（侧边栏按钮）
 const handleQuickExport = async () => {
@@ -1382,4 +1684,600 @@ const formatLogTime = (timestamp) => {
     min-height: 52px;
   }
 }
+
+/* ==================== 自动轮换示意图 ==================== */
+.shift-diagram {
+  background: #f0f4f8;
+  border: 1px solid #d8e4ee;
+  border-radius: 10px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  user-select: none;
+}
+
+/* 整体三栏布局：左侧方向 | 中间内容 | 右侧方向 */
+.diagram-layout {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 左右列偏移按钮列 */
+.diagram-side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.diagram-dir-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 8px;
+  border: 1.5px solid #b0c8dc;
+  border-radius: 8px;
+  background: #fff;
+  color: #4a7a9b;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+  transition: all 0.2s;
+  min-width: 36px;
+  line-height: 1.2;
+}
+
+.diagram-dir-btn span {
+  font-size: 10px;
+  font-weight: 500;
+  color: #7a9ab0;
+}
+
+.diagram-dir-btn:hover {
+  background: #e8f0f7;
+  border-color: #23587b;
+  color: #23587b;
+}
+
+.diagram-dir-btn.active {
+  background: #23587b;
+  color: #fff !important;
+  border-color: #1a4460;
+  box-shadow: 0 2px 6px rgba(35,88,123,0.35);
+}
+
+.diagram-dir-btn.active span {
+  color: #ccdde8;
+}
+
+/* 中间：行方向按钮 + 格子 */
+.diagram-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  flex: 1;
+}
+
+/* 格子横排容器（左按钮 | 格子 | 右按钮） */
+.diagram-grid-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* 左/右列偏移按钮 */
+.diagram-col-btn {
+  padding: 4px 6px;
+  border: 1.5px solid #b0c8dc;
+  border-radius: 8px;
+  background: #fff;
+  color: #4a7a9b;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.diagram-col-btn:hover {
+  background: #e8f0f7;
+  border-color: #23587b;
+  color: #23587b;
+}
+
+.diagram-col-btn.active {
+  background: #23587b;
+  color: #fff;
+  border-color: #1a4460;
+  box-shadow: 0 2px 6px rgba(35,88,123,0.3);
+}
+
+.diagram-row-btn {
+  width: 100%;
+  padding: 4px 8px;
+  border: 1.5px solid #b0c8dc;
+  border-radius: 8px;
+  background: #fff;
+  color: #4a7a9b;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.diagram-row-btn:hover {
+  background: #e8f0f7;
+  border-color: #23587b;
+  color: #23587b;
+}
+
+.diagram-row-btn.active {
+  background: #23587b;
+  color: #fff;
+  border-color: #1a4460;
+  box-shadow: 0 2px 6px rgba(35,88,123,0.3);
+}
+
+/* 9×9 格子容器 */
+.diagram-grid-9 {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  cursor: pointer;
+}
+
+.diagram-row-9 {
+  display: flex;
+  gap: 2px;
+}
+
+.diagram-cell-sm {
+  width: 18px;
+  height: 18px;
+  background: #dbe8f2;
+  border: 1px solid #b8d0e4;
+  border-radius: 3px;
+  transition: background 0.15s, border-color 0.15s, transform 0.15s;
+  box-sizing: border-box;
+}
+
+.diagram-cell-sm:hover {
+  background: #c2d8ed;
+  border-color: #23587b;
+  transform: scale(1.15);
+}
+
+/* 当前位置（红色） */
+.diagram-cell-sm.cell-current {
+  background: #ef4444;
+  border-color: #b91c1c;
+  border-radius: 50%;
+  transform: scale(1.1);
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.25);
+}
+
+/* 目标位置（绿色） */
+.diagram-cell-sm.cell-target {
+  background: #22c55e;
+  border-color: #15803d;
+  border-radius: 50%;
+  transform: scale(1.1);
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.25);
+  animation: target-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes target-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.25); }
+  50% { box-shadow: 0 0 0 5px rgba(34, 197, 94, 0.12); }
+}
+
+/* 路径格子（同列无溢出时，起点到终点之间的格子） */
+.diagram-cell-sm.cell-path {
+  background: linear-gradient(135deg, #a5d8ee 0%, #bae6fd 100%);
+  border-color: #38bdf8;
+  opacity: 0.75;
+}
+
+/* 底部状态说明栏 */
+.diagram-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #5a7a8f;
+  flex-wrap: wrap;
+  padding: 2px 0;
+}
+
+.dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dot-red {
+  background: #ef4444;
+  box-shadow: 0 0 0 2px rgba(239,68,68,0.2);
+}
+
+.dot-green {
+  background: #22c55e;
+  box-shadow: 0 0 0 2px rgba(34,197,94,0.2);
+}
+
+.diagram-status-hint {
+  color: #8aabb8;
+  font-style: italic;
+}
+
+/* 并排输入框 */
+.shift-inputs-row {
+  display: flex;
+  gap: 10px;
+}
+
+.input-group-compact {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.input-group-compact label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #5a7a8f;
+}
+
+.input-group-compact input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1.5px solid #cdd8e0;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #23587b;
+  background: #fff;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+
+.input-group-compact input:focus {
+  outline: none;
+  border-color: #23587b;
+}
+
+/* ==================== 自动轮换 Tab 切换 ==================== */
+.tab-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.shift-mode-tabs {
+  display: flex;
+  gap: 2px;
+  background: #e8eef2;
+  border-radius: 8px;
+  padding: 2px;
+}
+
+.shift-mode-tab {
+  padding: 3px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #5a7a8f;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.shift-mode-tab.active {
+  background: #23587b;
+  color: #fff;
+  box-shadow: 0 2px 4px rgba(35,88,123,0.2);
+}
+
+/* ==================== 选区轮换面板 ==================== */
+.zone-rot-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.zone-rot-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #23587b;
+}
+
+.zone-rot-add-btn {
+  padding: 4px 10px;
+  background: linear-gradient(135deg, #23587b, #2d6a94);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.zone-rot-add-btn:hover {
+  background: linear-gradient(135deg, #1a4460, #234e6d);
+  transform: translateY(-1px);
+}
+
+.zone-rot-empty {
+  font-size: 12px;
+  color: #aaa;
+  text-align: center;
+  padding: 10px 0;
+}
+
+.zone-rot-item {
+  display: flex;
+  flex-direction: column;
+  padding: 7px 10px;
+  border: 1.5px solid #e0e8ee;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-bottom: 6px;
+  transition: all 0.2s;
+  background: #fff;
+}
+
+.zone-rot-item:hover {
+  border-color: #23587b;
+  background: #f0f6fa;
+}
+
+.zone-rot-item.selected {
+  border-color: #23587b;
+  background: rgba(35, 88, 123, 0.08);
+  box-shadow: 0 0 0 2px rgba(35,88,123,0.15);
+}
+
+.zone-rot-item-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.zone-rot-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.zone-rot-name {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.zone-rot-count {
+  font-size: 11px;
+  color: #7a9ab0;
+}
+
+.zone-rot-del {
+  background: none;
+  border: none;
+  color: #bbb;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0 2px;
+  border-radius: 4px;
+  transition: color 0.15s;
+  flex-shrink: 0;
+}
+
+.zone-rot-del:hover { color: #e53e3e; }
+
+/* 轮换组 */
+.zone-rot-group {
+  border: 1.5px solid #e0e8ee;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  background: #fafcfe;
+  overflow: hidden;
+}
+
+.zone-rot-group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  background: #f0f4f8;
+  border-bottom: 1px solid #e0e8ee;
+}
+
+.zone-rot-type-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.zone-rot-type-badge.cycle {
+  background: rgba(35,88,123,0.15);
+  color: #23587b;
+}
+
+.zone-rot-type-badge.swap {
+  background: rgba(249,115,22,0.15);
+  color: #c2410c;
+}
+
+.zone-rot-group-zones {
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.zone-rot-group-zone-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #555;
+}
+
+.zone-rot-zone-label {
+  flex: 1;
+}
+
+.zone-rot-arrow {
+  font-size: 13px;
+  color: #7a9ab0;
+  flex-shrink: 0;
+}
+
+.zone-rot-add-to-group {
+  margin-top: 4px;
+}
+
+.zone-rot-select {
+  width: 100%;
+  padding: 5px 8px;
+  border: 1.5px dashed #b0c8dc;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #23587b;
+  background: #fff;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.zone-rot-select:focus {
+  border-color: #23587b;
+}
+
+.zone-rot-group-error {
+  font-size: 11px;
+  color: #e53e3e;
+  padding: 3px 0;
+}
+
+/* 组内"添加选区"按钮 */
+.zone-rot-add-zone-btn {
+  width: 100%;
+  margin-top: 6px;
+  padding: 5px;
+  border: 1.5px dashed #b0c8dc;
+  border-radius: 6px;
+  background: transparent;
+  color: #4a7a9b;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.zone-rot-add-zone-btn:hover {
+  border-color: #23587b;
+  color: #23587b;
+  background: #f0f6fa;
+}
+
+/* 正在编辑（选座）的选区行高亮 */
+.zone-rot-group-zone-row.editing {
+  background: rgba(35,88,123,0.1);
+  border-radius: 6px;
+  outline: 2px solid rgba(35,88,123,0.3);
+}
+
+/* 编辑状态提示条 */
+.zone-rot-editing-hint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 10px;
+  background: rgba(35,88,123,0.1);
+  border: 1px solid rgba(35,88,123,0.25);
+  border-radius: 8px;
+  font-size: 12px;
+  color: #23587b;
+  margin-bottom: 8px;
+}
+
+.zone-rot-hint-close {
+  padding: 2px 8px;
+  background: #23587b;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.zone-rot-hint-close:hover { background: #1a4460; }
+
+/* 组 / 选区重命名 inline input */
+.zone-rot-name-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 500;
+  color: #333;
+  outline: none;
+  padding: 0 2px;
+  cursor: text;
+  min-width: 0;
+}
+.zone-rot-name-input:focus {
+  background: #fff;
+  border-bottom: 1.5px solid #23587b;
+}
+
+.zone-rot-zone-name-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 12px;
+  color: #444;
+  outline: none;
+  padding: 0 2px;
+  cursor: text;
+  min-width: 0;
+}
+.zone-rot-zone-name-input:focus {
+  background: #fff;
+  border-bottom: 1px solid #23587b;
+}
+
+/* 颜色点：可交互（切换编辑） */
+.zone-rot-dot-btn {
+  cursor: pointer;
+  transition: transform 0.15s, filter 0.15s;
+  flex-shrink: 0;
+}
+.zone-rot-dot-btn:hover {
+  transform: scale(1.3);
+  filter: brightness(0.85);
+}
+
 </style>
