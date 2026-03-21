@@ -82,6 +82,9 @@ jobs:
       # 注入测试环境标记
       - name: Patch test-env notices
         run: |
+          # 解决 GitHub Actions 容器环境下的 git 目录所有权安全限制
+          git config --global --add safe.directory '*'
+
           # 1. 修改页面标题（加[测试版]前缀）
           sed -i 's|<title>座位表编辑器-scev2byccc</title>|<title>[测试版] 座位表编辑器-scev2byccc</title>|' index.html
 
