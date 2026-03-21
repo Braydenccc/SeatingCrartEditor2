@@ -12,7 +12,8 @@ const setCookie = (name, value, days) => {
         date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000))
         expires = "; expires=" + date.toUTCString()
     }
-    document.cookie = name + "=" + encodeURIComponent(value) + expires + "; path=/"
+    const secure = location.protocol === 'https:' ? '; Secure' : ''
+    document.cookie = name + "=" + encodeURIComponent(value) + expires + "; path=/; SameSite=Strict" + secure
 }
 
 const getCookie = (name) => {
@@ -27,7 +28,24 @@ const getCookie = (name) => {
 }
 
 const eraseCookie = (name) => {
-    document.cookie = name + '=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;'
+    const secure = location.protocol === 'https:' ? '; Secure' : ''
+    document.cookie = name + '=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Strict' + secure
+}
+
+// Double-Submit Cookie CSRF protection:
+// A random token is stored in a readable cookie AND sent as a request header.
+// A cross-origin attacker cannot read the cookie (same-origin policy), so they
+// cannot replicate the matching header. The server must verify that both values
+// are identical to reject forged cross-site requests.
+const getOrCreateCsrfToken = () => {
+    let csrfToken = getCookie('sce_csrf')
+    if (!csrfToken) {
+        csrfToken = Array.from(crypto.getRandomValues(new Uint8Array(24)))
+            .map(b => b.toString(16).padStart(2, '0'))
+            .join('')
+        setCookie('sce_csrf', csrfToken, 1)
+    }
+    return csrfToken
 }
 
 // Initialize from cookies
@@ -36,10 +54,17 @@ const initAuth = () => {
     const savedToken = getCookie('sce_token')
     if (savedUser && savedToken) {
         try {
-            currentUser.value = JSON.parse(savedUser)
-            token.value = savedToken
+            const parsed = JSON.parse(savedUser)
+            if (parsed && typeof parsed === 'object' && typeof parsed.username === 'string') {
+                currentUser.value = parsed
+                token.value = savedToken
+            } else {
+                eraseCookie('sce_user')
+                eraseCookie('sce_token')
+            }
         } catch (e) {
-            // ignore invalid json in cookie
+            eraseCookie('sce_user')
+            eraseCookie('sce_token')
         }
     }
 }
@@ -49,10 +74,15 @@ export function useAuth() {
 
     const callAuthApi = async (action, username, password) => {
         try {
+            // Passwords must be transmitted over HTTPS to prevent plaintext exposure.
+            // Server-side bcrypt hashing (already implemented in the backend) provides
+            // the primary password security layer.
+            const csrfToken = getOrCreateCsrfToken()
             const response = await fetch('/api/auth.php', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
                 },
                 body: JSON.stringify({ action, username, password })
             })

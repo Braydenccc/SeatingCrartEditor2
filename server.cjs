@@ -1,6 +1,6 @@
 const http = require('http');
-const fs = require('fs');
 const path = require('path');
+const { readFile } = require('fs').promises;
 
 // dist 目录（构建输出）
 // 当打包为 exe 时，需要从 exe 所在目录向上查找 dist 目录
@@ -50,26 +50,45 @@ function safeJoin(base, target) {
   return resolved;
 }
 
-const server = http.createServer((req, res) => {
+const server = http.createServer(async (req, res) => {
+  // Security headers
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+
   try {
-    let urlPath = decodeURIComponent(req.url.split('?')[0]);
+    let urlPath;
+    try {
+      urlPath = decodeURIComponent(req.url.split('?')[0]);
+    } catch (_e) {
+      res.statusCode = 400;
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      return res.end('Bad Request');
+    }
     if (urlPath === '/' || urlPath === '') urlPath = '/index.html';
 
     const filePath = safeJoin(DIST, urlPath);
 
-    fs.readFile(filePath, (err, data) => {
-      if (err) {
-        res.statusCode = 404;
-        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-        return res.end('Not found');
-      }
-
+    try {
+      const data = await readFile(filePath);
       const ext = path.extname(filePath).toLowerCase();
       const type = mime[ext] || 'application/octet-stream';
       res.setHeader('Content-Type', type);
       res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'");
       res.end(data);
-    });
+    } catch (err) {
+      if (err.code === 'ENOENT') {
+        res.statusCode = 404;
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        return res.end('Not found');
+      }
+      if (err.code === 'EACCES') {
+        res.statusCode = 403;
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        return res.end('Forbidden');
+      }
+      throw err;
+    }
   } catch (e) {
     if (e.code === 'PATH_TRAVERSAL') {
       res.statusCode = 400;
