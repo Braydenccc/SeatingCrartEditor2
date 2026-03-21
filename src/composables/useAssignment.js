@@ -51,7 +51,7 @@ export function useAssignment() {
 
   /**
    * 构建座位邻接关系缓存，避免重复调用 areDeskmates/getSeatDistance
-   * 返回: { deskmatesSet: Set<string>, distanceMap: Map<string, number> }
+   * 返回: { isDeskmate: (a, b) => boolean, getDistance: (a, b) => number }
    * key 格式: `${seatId1}|${seatId2}`（id 按字典序排列）
    */
   const buildSeatAdjacencyCache = (seatList) => {
@@ -62,12 +62,10 @@ export function useAssignment() {
     for (let i = 0; i < seatList.length; i++) {
       for (let j = i + 1; j < seatList.length; j++) {
         const key = makeSeatPairKey(seatList[i].id, seatList[j].id)
+        const d = getSeatDistance(seatList[i].id, seatList[j].id)
+        distanceMap.set(key, d)
         if (areDeskmates(seatList[i].id, seatList[j].id)) {
           deskmatesSet.add(key)
-          distanceMap.set(key, 0)
-        } else {
-          const d = getSeatDistance(seatList[i].id, seatList[j].id)
-          distanceMap.set(key, d)
         }
       }
     }

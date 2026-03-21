@@ -43,7 +43,9 @@ function safeJoin(base, target) {
   const baseResolved = path.resolve(base);
   const resolved = path.resolve(base, '.' + path.normalize('/' + target));
   if (!resolved.startsWith(baseResolved + path.sep) && resolved !== baseResolved) {
-    throw new Error('Path traversal attempt detected');
+    const err = new Error('Path traversal attempt detected');
+    err.code = 'PATH_TRAVERSAL';
+    throw err;
   }
   return resolved;
 }
@@ -68,6 +70,11 @@ const server = http.createServer((req, res) => {
       res.end(data);
     });
   } catch (e) {
+    if (e.code === 'PATH_TRAVERSAL') {
+      res.statusCode = 400;
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      return res.end('Bad request');
+    }
     res.statusCode = 500;
     res.setHeader('Content-Type', 'text/plain; charset=utf-8');
     res.end('Server error');

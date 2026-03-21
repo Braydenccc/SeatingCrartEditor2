@@ -111,14 +111,14 @@ export function useImageExport() {
         const canvasWidth = isLandscape ? A4_LONG : A4_SHORT
         const canvasHeight = isLandscape ? A4_SHORT : A4_LONG
 
-        canvas.width = canvasWidth
-        canvas.height = canvasHeight
-
-        // 内存安全：最大 16MB（每像素 4 字节）
-        const MAX_CANVAS_PIXELS = 16 * 1024 * 1024 / 4
+        // 内存安全：最大 64MB（每像素 4 字节），需在分配 canvas 前检查
+        const MAX_CANVAS_PIXELS = 64 * 1024 * 1024 / 4
         if (canvasWidth * canvasHeight > MAX_CANVAS_PIXELS) {
           throw new Error(`Canvas 尺寸过大（${canvasWidth}×${canvasHeight}），可能导致内存溢出`)
         }
+
+        canvas.width = canvasWidth
+        canvas.height = canvasHeight
 
         // 白色背景
         ctx.fillStyle = 'white'
