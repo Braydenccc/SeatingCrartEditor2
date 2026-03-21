@@ -28,7 +28,8 @@ const getCookie = (name) => {
 }
 
 const eraseCookie = (name) => {
-    document.cookie = name + '=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Strict'
+    const secure = location.protocol === 'https:' ? '; Secure' : ''
+    document.cookie = name + '=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Strict' + secure
 }
 
 // Double-Submit Cookie CSRF protection:

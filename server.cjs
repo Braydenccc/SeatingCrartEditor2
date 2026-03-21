@@ -56,7 +56,14 @@ const server = http.createServer(async (req, res) => {
   res.setHeader('Referrer-Policy', 'no-referrer');
 
   try {
-    let urlPath = decodeURIComponent(req.url.split('?')[0]);
+    let urlPath;
+    try {
+      urlPath = decodeURIComponent(req.url.split('?')[0]);
+    } catch (_e) {
+      res.statusCode = 400;
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      return res.end('Bad Request');
+    }
     if (urlPath === '/' || urlPath === '') urlPath = '/index.html';
 
     const filePath = safeJoin(DIST, urlPath);
