@@ -80,7 +80,7 @@ try {
                 'username' => $username,
                 'token' => $token
             ]
-        ]);
+        ], JSON_HEX_TAG | JSON_HEX_AMP);
         
     } elseif ($action === 'login') {
         // 登录
@@ -100,7 +100,7 @@ try {
                     'username' => $username,
                     'token' => $token
                 ]
-            ]);
+            ], JSON_HEX_TAG | JSON_HEX_AMP);
         } else {
             echo json_encode(['success' => false, 'message' => '用户名或密码不正确']);
         }

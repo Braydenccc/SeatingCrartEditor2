@@ -118,7 +118,7 @@ try {
                 'fileId' => $fileId,
                 'metadata' => $metadata
             ]
-        ]);
+        ], JSON_HEX_TAG | JSON_HEX_AMP);
 
     } elseif ($action === 'list') {
         $userFilesKey = $username . '_files';
@@ -181,7 +181,7 @@ try {
         echo json_encode([
             'success' => true,
             'data' => $fileData
-        ]);
+        ], JSON_HEX_TAG | JSON_HEX_AMP);
 
     } elseif ($action === 'delete') {
          $fileId = isset($input['fileId']) ? trim($input['fileId']) : null;
