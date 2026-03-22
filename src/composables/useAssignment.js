@@ -3,7 +3,7 @@ import { useStudentData } from './useStudentData'
 import { useSeatChart } from './useSeatChart'
 import { useZoneData } from './useZoneData'
 import { useSeatRelation } from './useSeatRelation'
-import { RelationType, getRelationPriority } from '../constants/relationTypes.js'
+import { RelationType } from '../constants/relationTypes.js'
 
 export function useAssignment() {
   const { students } = useStudentData()

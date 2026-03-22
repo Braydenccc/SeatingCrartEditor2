@@ -520,9 +520,9 @@ const zoneArrowData = computed(() => {
     const circles = centroids.map((c, i) => ({ ...c, color: colors[i], label: zones[i].name }))
 
     if (group.type === 'swap') {
-      biDirLines(centroids[0], centroids[1]).forEach(({ from, to }) => {
+      biDirLines(centroids[0], centroids[1]).forEach(({ from, to }, idx) => {
         const adj = adjustLine(from, to, 24, 6)
-        arrows.push({ ...adj, color: '#6366f1', markerId: `sw-${group.id}` })
+        arrows.push({ ...adj, color: '#6366f1', markerId: `sw-${group.id}-${idx}` })
       })
     } else {
       // cycle arrows: 0→1→2→...→n-1→0

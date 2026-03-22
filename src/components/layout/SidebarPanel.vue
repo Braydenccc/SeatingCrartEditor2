@@ -435,9 +435,9 @@ const tabs = [
 
 // 座位配置表单
 const configForm = ref({
-  groupCount: 3,
+  groupCount: 4,
   columnsPerGroup: 2,
-  seatsPerColumn: 6,
+  seatsPerColumn: 7,
   shiftDistance: 4,
   shiftColShift: 0,
   shiftDirection: -1,
