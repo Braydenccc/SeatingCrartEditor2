@@ -469,11 +469,7 @@ onUnmounted(() => {
 
 /* 空置座位样式 */
 .seat-item.empty {
-  background: repeating-linear-gradient(45deg,
-      #f5f5f5,
-      #f5f5f5 10px,
-      #e0e0e0 10px,
-      #e0e0e0 20px);
+  background: #f5f5f5;
   border-color: #bbb;
 }
 
@@ -492,7 +488,7 @@ onUnmounted(() => {
 
 /* 已分配学生的座位 */
 .seat-item.occupied {
-  background: linear-gradient(135deg, #e8f4f8 0%, #d0e9f2 100%);
+  background: #e8f4f8;
   border-color: #23587b;
 }
 
@@ -551,17 +547,13 @@ onUnmounted(() => {
 
 /* 选区高亮 */
 .seat-item.zone-highlight {
-  background: linear-gradient(135deg,
-      var(--zone-color, #E0E0E0) 0%,
-      color-mix(in srgb, var(--zone-color, #E0E0E0) 60%, white) 100%);
+  background: var(--zone-color, #E0E0E0);
   border-color: var(--zone-color, #E0E0E0);
   box-shadow: 0 0 8px color-mix(in srgb, var(--zone-color, #E0E0E0) 50%, transparent);
 }
 
 .seat-item.zone-highlight.occupied {
-  background: linear-gradient(135deg,
-      color-mix(in srgb, var(--zone-color, #E0E0E0) 40%, #e8f4f8) 0%,
-      color-mix(in srgb, var(--zone-color, #E0E0E0) 30%, #d0e9f2) 100%);
+  background: color-mix(in srgb, var(--zone-color, #E0E0E0) 40%, #e8f4f8);
 }
 
 /* 响应式调整 */

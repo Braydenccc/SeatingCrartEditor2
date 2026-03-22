@@ -439,7 +439,7 @@ const formatSize = (bytes) => {
 .btn-primary {
   width: 100%;
   padding: 12px;
-  background: linear-gradient(135deg, #23587b 0%, #2d6a94 100%);
+  background: #23587b;
   color: white;
   border: none;
   border-radius: 6px;

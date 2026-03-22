@@ -448,13 +448,13 @@ const deleteTagHandler = (tagId, tagName) => {
 }
 
 .btn-confirm {
-  background: linear-gradient(135deg, #23587b 0%, #2d6a94 100%);
+  background: #23587b;
   color: white;
   box-shadow: 0 2px 6px rgba(35, 88, 123, 0.2);
 }
 
 .btn-confirm:hover {
-  background: linear-gradient(135deg, #1a4460 0%, #234e6d 100%);
+  background: #1a4460;
   box-shadow: 0 4px 10px rgba(35, 88, 123, 0.3);
   transform: translateY(-1px);
 }

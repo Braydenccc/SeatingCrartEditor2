@@ -90,7 +90,7 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  background: linear-gradient(135deg, #23587b 0%, #2d6a94 100%);
+  background: #23587b;
   height: 100px;
   color: aliceblue;
   padding: 0 30px;
@@ -219,14 +219,14 @@ onBeforeUnmount(() => {
 }
 
 .login-btn {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.05) 100%);
+  background: rgba(255, 255, 255, 0.2);
   font-weight: 500;
   border: 1px solid rgba(255, 255, 255, 0.5);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .login-btn:hover {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.1) 100%);
+  background: rgba(255, 255, 255, 0.3);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 

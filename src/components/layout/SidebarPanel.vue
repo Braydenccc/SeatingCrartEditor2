@@ -837,7 +837,7 @@ const formatLogTime = (timestamp) => {
   align-items: stretch;
   width: 20%;
   height: 100%;
-  background: linear-gradient(180deg, #e8eef2 0%, #dce4e9 100%);
+  background: #e8eef2;
   border-right: 1px solid #d0d7dc;
 }
 
@@ -935,12 +935,12 @@ const formatLogTime = (timestamp) => {
 }
 
 .tab-button:hover {
-  background: linear-gradient(90deg, rgba(35, 88, 123, 0.08) 0%, transparent 100%);
+  background: rgba(35, 88, 123, 0.08);
   color: #23587b;
 }
 
 .tab-button.active {
-  background: linear-gradient(90deg, rgba(35, 88, 123, 0.12) 0%, rgba(35, 88, 123, 0.05) 100%);
+  background: rgba(35, 88, 123, 0.12);
   color: #23587b;
   font-weight: 600;
 }
@@ -1091,7 +1091,7 @@ const formatLogTime = (timestamp) => {
   gap: 10px;
   width: 100%;
   padding: 12px 16px;
-  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+  background: #f8f9fa;
   border: 1px solid #e0e0e0;
   border-radius: 8px;
   cursor: pointer;
@@ -1103,38 +1103,38 @@ const formatLogTime = (timestamp) => {
 }
 
 .option-button:hover {
-  background: linear-gradient(135deg, #ffffff 0%, #f0f4f7 100%);
+  background: #ffffff;
   border-color: #23587b;
   box-shadow: 0 2px 6px rgba(35, 88, 123, 0.15);
   transform: translateX(2px);
 }
 
 .option-button.primary {
-  background: linear-gradient(135deg, #23587b 0%, #2d6a94 100%);
+  background: #23587b;
   color: white;
   border-color: #23587b;
   font-weight: 600;
 }
 
 .option-button.primary:hover {
-  background: linear-gradient(135deg, #1a4460 0%, #234e6d 100%);
+  background: #1a4460;
   box-shadow: 0 4px 10px rgba(35, 88, 123, 0.3);
 }
 
 .option-button.active {
-  background: linear-gradient(135deg, #23587b 0%, #2d6a94 100%);
+  background: #23587b;
   color: white;
   border-color: #23587b;
   box-shadow: 0 3px 10px rgba(35, 88, 123, 0.3);
 }
 
 .option-button.active:hover {
-  background: linear-gradient(135deg, #1a4460 0%, #234e6d 100%);
+  background: #1a4460;
   box-shadow: 0 4px 12px rgba(35, 88, 123, 0.4);
 }
 
 .option-button.confirming {
-  background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%) !important;
+  background: #FF9800 !important;
   color: white !important;
   border-color: #FF9800 !important;
   animation: pulse 0.8s ease-in-out infinite;
@@ -1878,7 +1878,7 @@ const formatLogTime = (timestamp) => {
 
 /* 路径格子（同列无溢出时，起点到终点之间的格子） */
 .diagram-cell-sm.cell-path {
-  background: linear-gradient(135deg, #a5d8ee 0%, #bae6fd 100%);
+  background: #a5d8ee;
   border-color: #38bdf8;
   opacity: 0.75;
 }
@@ -2002,7 +2002,7 @@ const formatLogTime = (timestamp) => {
 
 .zone-rot-add-btn {
   padding: 4px 10px;
-  background: linear-gradient(135deg, #23587b, #2d6a94);
+  background: #23587b;
   color: #fff;
   border: none;
   border-radius: 6px;
@@ -2013,7 +2013,7 @@ const formatLogTime = (timestamp) => {
 }
 
 .zone-rot-add-btn:hover {
-  background: linear-gradient(135deg, #1a4460, #234e6d);
+  background: #1a4460;
   transform: translateY(-1px);
 }
 

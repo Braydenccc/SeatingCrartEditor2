@@ -268,7 +268,7 @@ onUnmounted(() => {
 
 .zone-item.selected {
   border-color: #23587b;
-  background: linear-gradient(135deg, #e8f4f8 0%, #d0e9f2 100%);
+  background: #e8f4f8;
   box-shadow: 0 2px 12px rgba(35, 88, 123, 0.25);
 }
 
@@ -387,7 +387,7 @@ onUnmounted(() => {
 .delete-zone-btn {
   width: 100%;
   padding: 6px;
-  background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+  background: #f44336;
   color: white;
   border: none;
   border-radius: 4px;
@@ -398,11 +398,11 @@ onUnmounted(() => {
 }
 
 .delete-zone-btn:hover {
-  background: linear-gradient(135deg, #d32f2f 0%, #c62828 100%);
+  background: #d32f2f;
 }
 
 .delete-zone-btn.confirming {
-  background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%) !important;
+  background: #FF9800 !important;
   animation: pulse 0.8s ease-in-out infinite;
   box-shadow: 0 0 0 2px rgba(255, 152, 0, 0.2);
 }

@@ -125,7 +125,7 @@ const handleToggleVisible = (zoneId) => {
 
 .add-zone-btn {
   padding: 6px 12px;
-  background: linear-gradient(135deg, #23587b 0%, #2d6a94 100%);
+  background: #23587b;
   color: white;
   border: none;
   border-radius: 6px;
@@ -136,7 +136,7 @@ const handleToggleVisible = (zoneId) => {
 }
 
 .add-zone-btn:hover {
-  background: linear-gradient(135deg, #1a4460 0%, #234e6d 100%);
+  background: #1a4460;
   transform: translateY(-1px);
 }
 

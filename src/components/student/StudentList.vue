@@ -207,7 +207,7 @@ const handleDeleteStudent = (studentId) => {
 
 .add-student-btn {
   padding: 8px 16px;
-  background: linear-gradient(135deg, #23587b 0%, #2d6a94 100%);
+  background: #23587b;
   color: white;
   border: none;
   border-radius: 6px;
@@ -219,7 +219,7 @@ const handleDeleteStudent = (studentId) => {
 }
 
 .add-student-btn:hover {
-  background: linear-gradient(135deg, #1a4460 0%, #234e6d 100%);
+  background: #1a4460;
   box-shadow: 0 4px 8px rgba(35, 88, 123, 0.3);
   transform: translateY(-1px);
 }

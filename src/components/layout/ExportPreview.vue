@@ -541,12 +541,12 @@ onBeforeUnmount(() => {
 }
 
 .btn.primary {
-  background: linear-gradient(135deg, #23587b, #2d6a94);
+  background: #23587b;
   color: white;
 }
 
 .btn.primary:hover {
-  background: linear-gradient(135deg, #1a4460, #234e6d);
+  background: #1a4460;
   box-shadow: 0 3px 10px rgba(35,88,123,0.3);
 }
 
