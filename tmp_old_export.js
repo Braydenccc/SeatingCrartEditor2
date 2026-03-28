@@ -88,7 +88,6 @@ export function useImageExport() {
         const ROW_NUMBER_WIDTH = exportSettings.value.showRowNumbers ? 40 : 0
         const GROUP_LABEL_HEIGHT = exportSettings.value.showGroupLabels ? 50 : 0
         const PODIUM_HEIGHT = exportSettings.value.showPodium ? 60 : 0
-        const isReversed = exportSettings.value.reverseOrder
 
         // 计算内容尺寸
         const groupWidth = seatConfig.value.columnsPerGroup * SEAT_WIDTH +
@@ -155,11 +154,7 @@ export function useImageExport() {
         }
 
         // 座位表起始位置
-        let seatStartY = PADDING + TITLE_HEIGHT
-        if (isReversed) {
-          if (exportSettings.value.showPodium) seatStartY += PODIUM_HEIGHT
-          if (exportSettings.value.showGroupLabels) seatStartY += GROUP_LABEL_HEIGHT
-        }
+        const seatStartY = PADDING + TITLE_HEIGHT
         const seatStartX = PADDING + ROW_NUMBER_WIDTH
 
         // 绘制左右行号
@@ -171,8 +166,7 @@ export function useImageExport() {
 
           for (let i = 0; i < seatConfig.value.seatsPerColumn; i++) {
             const rowY = seatStartY + i * (SEAT_HEIGHT + ROW_GAP) + SEAT_HEIGHT / 2
-            // 正序: 第1排在顶部显示最大数(最后排离讲台最远); 翻转: 第1排在底部
-            const rowNumber = isReversed ? (i + 1) : (seatConfig.value.seatsPerColumn - i)
+            const rowNumber = seatConfig.value.seatsPerColumn - i
 
             // 左侧行号
             ctx.fillText(rowNumber.toString(), PADDING + ROW_NUMBER_WIDTH / 2, rowY)
@@ -189,10 +183,8 @@ export function useImageExport() {
 
           group.forEach((column) => {
             let seatY = seatStartY
-            // 翻转行序时反向迭代列数据
-            const colSeats = isReversed ? [...column].reverse() : column
 
-            colSeats.forEach((seat) => {
+            column.forEach((seat) => {
               drawSeat(ctx, columnX, seatY, SEAT_WIDTH, SEAT_HEIGHT, SEAT_RADIUS, seat, isBW, isPureBW, borderColor, emptyBorderColor, vacantBorderColor)
               seatY += SEAT_HEIGHT + ROW_GAP
             })
@@ -203,11 +195,11 @@ export function useImageExport() {
           currentX += groupWidth + GROUP_GAP
         })
 
-        // 绘制组号（翻转时组号在顶部座位上方，正序时在底部下方）
+        // 绘制组号
         if (exportSettings.value.showGroupLabels) {
-          const groupLabelY = isReversed
-            ? seatStartY - 20  // 翻转：组号在座位最上方
-            : seatStartY + seatConfig.value.seatsPerColumn * SEAT_HEIGHT + (seatConfig.value.seatsPerColumn - 1) * ROW_GAP + 30
+          const groupLabelY = seatStartY +
+            seatConfig.value.seatsPerColumn * SEAT_HEIGHT +
+            (seatConfig.value.seatsPerColumn - 1) * ROW_GAP + 30
 
           ctx.fillStyle = primaryColor
           ctx.font = `bold ${exportSettings.value.fontSizeGroupLabel}px Microsoft YaHei, Arial, sans-serif`
@@ -220,11 +212,9 @@ export function useImageExport() {
           }
         }
 
-        // 绘制讲台（翻转时讲台在顶部，正序时在底部）
+        // 绘制讲台
         if (exportSettings.value.showPodium) {
-          const podiumY = isReversed
-            ? PADDING + TITLE_HEIGHT + 10  // 顶部，Title下方
-            : contentHeight - PADDING - PODIUM_HEIGHT + 10  // 底部
+          const podiumY = contentHeight - PADDING - PODIUM_HEIGHT + 10
           const podiumWidth = SEAT_WIDTH * 4 + COL_GAP * 3
           const podiumX = (contentWidth - podiumWidth) / 2
 

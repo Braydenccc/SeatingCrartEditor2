@@ -7,6 +7,7 @@ const exportSettings = ref({
   showRowNumbers: true,
   showGroupLabels: true,
   showPodium: true,
+  reverseOrder: false,       // 翻转行序（讲台置顶）
   enableTagLabels: true,
   colorMode: 'color', // 'color' | 'bw' | 'pureBw'
   // 间距设置
@@ -25,6 +26,21 @@ const exportSettings = ref({
   // Y轴偏移（额外微调，在自动居中的基础上叠加）
   offsetYName: 0,          // 姓名 Y 偏移
   offsetYStudentId: 0,     // 学号 Y 偏移
+  // Excel 导出选项
+  excelShowStudentId: true,      // 格子内显示学号
+  excelShowRowNumbers: true,     // 显示行号列
+  excelShowGroupLabels: true,    // 显示组号行
+  excelShowTitle: true,          // 顶部标题行
+  excelShowPodium: true,         // 讲台行
+  excelReverseOrder: false,      // 翻转行序（讲台置顶）
+  excelShowGroupGap: true,       // 保留组间空列
+  excelColorMode: 'color',       // 'color' | 'bw'
+  excelNameFontSize: 12,         // 姓名字号 (pt)
+  excelIdFontSize: 10,           // 学号字号 (pt)
+  excelCellWidth: 10,            // 座位列宽 (wch)
+  excelSeatRowHeight: 40,        // 座位行高 (hpt)
+  excelShowTagTable: false,      // 导出标签统计表
+  excelTagTableNewSheet: false,  // 标签表放在独立工作表
   tagSettings: {} // 格式: { tagId: { enabled: true, displayText: '文本' } }
 })
 

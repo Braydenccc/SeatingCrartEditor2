@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx'
+import * as XLSX from 'xlsx-js-style'
 
 export function useExcelData() {
   // 下载空白模板
@@ -204,9 +204,291 @@ export function useExcelData() {
     XLSX.writeFile(wb, `学生名单_${timestamp}.xlsx`)
   }
 
+  /**
+   * 核心函数：生成用于导出的 Excel 工作簿和主工作表（用于直接渲染高保真预览或文件导出）
+   */
+  const generateSeatChartWorkbook = (organizedSeats, students, tags = [], seatConfig, options = {}) => {
+    const {
+      showStudentId    = true,
+      showRowNumbers   = true,
+      showGroupLabels  = true,
+      showTitle        = true,
+      showPodium       = true,
+      colorMode        = 'color',
+      nameFontSize     = 12,
+      idFontSize       = 10,
+      cellWidth        = 10,
+      seatRowHeight    = 40,
+      showTagTable     = false,
+      tagTableNewSheet = false,
+      reverseOrder     = false,
+      showGroupGap     = true,
+      title            = '班级座位表'
+    } = options
+
+    const { groupCount, columnsPerGroup, seatsPerColumn } = seatConfig
+    const studentMap = new Map(students.map(s => [s.id, s]))
+
+    // ── 纯净无底色排版 (完全贴合普通表格预览，只做对齐和描边) ──
+    const thinBorder = (clr = '000000') => ({
+      top:    { style: 'thin', color: { rgb: clr } },
+      bottom: { style: 'thin', color: { rgb: clr } },
+      left:   { style: 'thin', color: { rgb: clr } },
+      right:  { style: 'thin', color: { rgb: clr } }
+    })
+    // 居中对齐参数
+    const center = { horizontal: 'center', vertical: 'center', wrapText: true }
+
+    // 原生单元格属性
+    const styleHeader = {
+      font: { bold: true, sz: nameFontSize, color: { rgb: '000000' } },
+      alignment: center,
+      border: thinBorder('000000')
+    }
+    const styleTitle = {
+      font: { bold: true, sz: nameFontSize + 4, color: { rgb: '000000' } },
+      alignment: center,
+      border: thinBorder('000000')
+    }
+    const styleRowNum = {
+      font: { bold: true, sz: nameFontSize - 1, color: { rgb: '000000' } },
+      alignment: center,
+      border: thinBorder('000000')
+    }
+    const styleSeatName = {
+      font: { bold: true, sz: nameFontSize, color: { rgb: '000000' } },
+      alignment: center,
+      border: thinBorder('000000')
+    }
+    const styleSeat = {
+      font: { sz: nameFontSize, color: { rgb: '000000' } },
+      alignment: center,
+      border: thinBorder('000000')
+    }
+    const styleEmpty = {
+      font: { sz: nameFontSize, color: { rgb: '000000' } },
+      alignment: center,
+      border: thinBorder('000000')
+    }
+    const styleVacant = {
+      font: { sz: nameFontSize, color: { rgb: '000000' } },
+      alignment: center,
+      border: thinBorder('000000')
+    }
+    const stylePodium = {
+      font: { bold: true, sz: nameFontSize, color: { rgb: '000000' } },
+      alignment: center,
+      border: thinBorder('000000')
+    }
+    const styleTagHeader = {
+      font: { bold: true, sz: nameFontSize, color: { rgb: '000000' } },
+      alignment: center,
+      border: thinBorder('000000')
+    }
+
+    // ── 布局计算 ──
+    const groupGapCols     = showGroupGap ? 1 : 0
+    const dataColOffset    = showRowNumbers ? 1 : 0
+    const groupStartCol    = (g) => dataColOffset + g * (columnsPerGroup + groupGapCols)
+    const totalCols        = dataColOffset + groupCount * columnsPerGroup + (groupCount - 1) * groupGapCols
+    const titleRowOffset   = showTitle ? 1 : 0
+    // 翻转时讲台在最前；正序时在最后
+    const podiumTopOffset  = reverseOrder && showPodium ? 1 : 0
+    const groupLabelOffset = showGroupLabels ? 1 : 0
+    const headerRowOffset  = titleRowOffset + podiumTopOffset + groupLabelOffset
+    const podiumRows       = showPodium ? 1 : 0
+    const totalSeatRows    = headerRowOffset + seatsPerColumn + (reverseOrder ? 0 : podiumRows)
+
+    const ws = {}
+    const merges = []
+
+    const setCell = (r, c, v, s, t = 's') => {
+      ws[XLSX.utils.encode_cell({ r, c })] = { v, t, s }
+    }
+
+    // ── 标题行 ──
+    if (showTitle) {
+      for (let c = 0; c < totalCols; c++) setCell(0, c, c === 0 ? title : '', styleTitle)
+      merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } })
+    }
+
+    // ── 讲台行（翻转时，放在组号上方） ──
+    if (showPodium && reverseOrder) {
+      const pRow = titleRowOffset
+      for (let c = 0; c < totalCols; c++) setCell(pRow, c, c === 0 ? '讲台' : '', stylePodium)
+      merges.push({ s: { r: pRow, c: 0 }, e: { r: pRow, c: totalCols - 1 } })
+    }
+
+    // ── 组号行 ──
+    if (showGroupLabels) {
+      const hRow = titleRowOffset + podiumTopOffset
+      if (showRowNumbers) setCell(hRow, 0, '', styleHeader)
+      for (let g = 0; g < groupCount; g++) {
+        const sc = groupStartCol(g)
+        setCell(hRow, sc, `第 ${g + 1} 组`, styleHeader)
+        for (let c = 1; c < columnsPerGroup; c++) setCell(hRow, sc + c, '', styleHeader)
+        if (columnsPerGroup > 1) merges.push({ s: { r: hRow, c: sc }, e: { r: hRow, c: sc + columnsPerGroup - 1 } })
+      }
+    }
+
+    // ── 座位行 ──
+    for (let r = 0; r < seatsPerColumn; r++) {
+      const eRow = headerRowOffset + r
+      // 翻转时：读取数据源行索引反向
+      const srcRow = reverseOrder ? (seatsPerColumn - 1 - r) : r
+      // 行号显示：前端座位(srcRow=N-1)显示1，最后端(srcRow=0)显示N
+      const displayRow = seatsPerColumn - srcRow
+      if (showRowNumbers) setCell(eRow, 0, `第${displayRow}排`, styleRowNum)
+      for (let g = 0; g < groupCount; g++) {
+        for (let c = 0; c < columnsPerGroup; c++) {
+          const eCol = groupStartCol(g) + c
+          const seat = organizedSeats[g]?.[c]?.[srcRow]
+          if (!seat) {
+            setCell(eRow, eCol, '', styleSeat)
+          } else if (seat.isEmpty) {
+            setCell(eRow, eCol, '空置', styleEmpty)
+          } else if (seat.studentId) {
+            const stu = studentMap.get(seat.studentId)
+            if (stu) {
+              let txt = stu.name || '未命名'
+              if (showStudentId && stu.studentNumber) txt += `\n${stu.studentNumber}`
+              setCell(eRow, eCol, txt, styleSeatName)
+            } else {
+              setCell(eRow, eCol, '', styleSeat)
+            }
+          } else {
+            setCell(eRow, eCol, '', styleVacant)
+          }
+        }
+        // 组间空列
+        if (showGroupGap && g < groupCount - 1) {
+          const gapCol = groupStartCol(g) + columnsPerGroup
+          setCell(eRow, gapCol, '', {}) // 纯空白无样式
+        }
+      }
+    }
+
+    // ── 讲台行（正序时，放在最后） ──
+    if (showPodium && !reverseOrder) {
+      const pRow = headerRowOffset + seatsPerColumn
+      for (let c = 0; c < totalCols; c++) setCell(pRow, c, c === 0 ? '讲台' : '', stylePodium)
+      merges.push({ s: { r: pRow, c: 0 }, e: { r: pRow, c: totalCols - 1 } })
+    }
+
+    // ── 列宽 / 行高 ──
+    ws['!cols'] = Array.from({ length: totalCols }, (_, c) => {
+      if (showRowNumbers && c === 0) return { wch: 7 }
+      const baseC = c - dataColOffset
+      if (showGroupGap) {
+        if (baseC % (columnsPerGroup + 1) === columnsPerGroup) return { wch: 2 }
+      }
+      return { wch: cellWidth }
+    })
+    ws['!rows'] = Array.from({ length: totalSeatRows }, (_, r) => {
+      if (showTitle && r === 0) return { hpt: 28 }
+      if (showGroupLabels && r === titleRowOffset + podiumTopOffset) return { hpt: 22 }
+      // 翻转：讲台行在 titleRowOffset 
+      if (reverseOrder && showPodium && r === titleRowOffset) return { hpt: 22 }
+      // 正序：讲台行在最后
+      if (!reverseOrder && r === totalSeatRows - 1 && showPodium) return { hpt: 22 }
+      return { hpt: seatRowHeight }
+    })
+
+    // ── 标签统计表构建函数 ──
+    const buildTagTable = (targetWs, targetMerges, startRow, targetCols) => {
+      if (!tags || tags.length === 0) return startRow
+      const totalSpan = Math.max(3, targetCols)
+      // 标题
+      for (let c = 0; c < totalSpan; c++) {
+        targetWs[XLSX.utils.encode_cell({ r: startRow, c })] = {
+          v: c === 0 ? '标签统计' : '', t: 's', s: styleTagHeader
+        }
+      }
+      targetMerges.push({ s: { r: startRow, c: 0 }, e: { r: startRow, c: totalSpan - 1 } })
+      
+      // 表头
+      const hRow = startRow + 1
+      targetWs[XLSX.utils.encode_cell({ r: hRow, c: 0 })] = { v: '标签', t: 's', s: styleTagHeader }
+      targetWs[XLSX.utils.encode_cell({ r: hRow, c: 1 })] = { v: '人数', t: 's', s: styleTagHeader }
+      for (let c = 2; c < totalSpan; c++) {
+        targetWs[XLSX.utils.encode_cell({ r: hRow, c })] = { v: c === 2 ? '学生名单' : '', t: 's', s: styleTagHeader }
+      }
+      if (totalSpan > 3) {
+        targetMerges.push({ s: { r: hRow, c: 2 }, e: { r: hRow, c: totalSpan - 1 } })
+      }
+      
+      let dRow = hRow + 1
+      for (const tag of tags) {
+        const tagStus = students.filter(s => s.tags && s.tags.includes(tag.id))
+        if (tagStus.length === 0) continue
+        targetWs[XLSX.utils.encode_cell({ r: dRow, c: 0 })] = { v: tag.name, t: 's', s: styleRowNum }
+        targetWs[XLSX.utils.encode_cell({ r: dRow, c: 1 })] = { v: tagStus.length, t: 'n', s: styleSeat }
+        for (let c = 2; c < totalSpan; c++) {
+          targetWs[XLSX.utils.encode_cell({ r: dRow, c })] = {
+            v: c === 2 ? tagStus.map(s => s.name).join('、 ') : '', t: 's',
+            s: { ...styleSeat, alignment: { horizontal: 'left', vertical: 'center', wrapText: true } }
+          }
+        }
+        if (totalSpan > 3) {
+          targetMerges.push({ s: { r: dRow, c: 2 }, e: { r: dRow, c: totalSpan - 1 } })
+        }
+        dRow++
+      }
+      return dRow - 1
+    }
+
+    // ── 确定范围 & 处理标签表 ──
+    const wb = XLSX.utils.book_new()
+    let maxRow = totalSeatRows - 1
+    let maxCol = totalCols - 1
+
+    if (showTagTable && tags.length > 0) {
+      if (tagTableNewSheet) {
+        // 独立工作表
+        const tagWs = {}
+        const tagMerges = []
+        const lastRow = buildTagTable(tagWs, tagMerges, 0, 3)
+        tagWs['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: lastRow, c: 2 } })
+        tagWs['!merges'] = tagMerges
+        tagWs['!cols'] = [{ wch: 14 }, { wch: 8 }, { wch: 60 }]
+        tagWs['!rows'] = Array.from({ length: lastRow + 1 }, (_, i) => ({ hpt: i < 2 ? 22 : 28 }))
+        XLSX.utils.book_append_sheet(wb, tagWs, '标签统计')
+      } else {
+        // 同 Sheet，空 2 行后追加
+        const tagStart = totalSeatRows + 2
+        const lastRow = buildTagTable(ws, merges, tagStart, totalCols)
+        maxRow = lastRow
+        maxCol = Math.max(maxCol, 2)
+      }
+    }
+
+    ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: maxRow, c: maxCol } })
+    ws['!merges'] = merges
+
+    XLSX.utils.book_append_sheet(wb, ws, title || '座位表')
+    
+    return {
+      wb,
+      ws,     // 主工作表
+      maxRow, // 主工作表最大行索引
+      maxCol  // 主工作表最大列索引
+    }
+  }
+
+  /**
+   * 将座位表导出为 Excel 并触发下载
+   */
+  const exportSeatChartToExcel = (organizedSeats, students, tags = [], seatConfig, options = {}) => {
+    const { wb } = generateSeatChartWorkbook(organizedSeats, students, tags, seatConfig, options)
+    const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-')
+    XLSX.writeFile(wb, `座位表_${timestamp}.xlsx`)
+  }
+
   return {
     downloadTemplate,
     importFromExcel,
-    exportToExcel
+    exportToExcel,
+    generateSeatChartWorkbook,
+    exportSeatChartToExcel
   }
-}
+}
