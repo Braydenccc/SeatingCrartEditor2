@@ -24,7 +24,6 @@
     "bcryptjs": "^3.0.3",
     "pkg": "^5.8.1",
     "vue": "^3.5.22",
-    "xlsx": "^0.18.5",
     "xlsx-js-style": "^1.2.0"
   },
   "devDependencies": {
@@ -34,6 +33,7 @@
     "electron": "^40.8.0",
     "electron-builder": "^26.8.1",
     "vite": "^7.1.11",
+    "vite-plugin-compression": "^0.5.1",
     "vite-plugin-vue-devtools": "^8.0.3"
   },
   "description": "This template should help get you started developing with Vue 3 in Vite.",

@@ -5,7 +5,7 @@ import AppHeader from './components/layout/AppHeader.vue'
 import EditorPanel from './components/layout/EditorPanel.vue'
 import SidebarPanel from './components/layout/SidebarPanel.vue'
 import LoadingSpinner from './components/ui/LoadingSpinner.vue'
-import { ref, onMounted, defineAsyncComponent } from 'vue'
+import { ref, onMounted, defineAsyncComponent, watch } from 'vue'
 
 const LoginDialog = defineAsyncComponent({
   loader: () => import('./components/auth/LoginDialog.vue'),
@@ -33,10 +33,11 @@ initAuth()
 
 onMounted(async () => {
   const lastWs = getLastWorkspace()
+  
   if (lastWs && lastWs.type === 'cloud' && lastWs.fileId) {
-    // 延迟一丢丢等待 auth 彻底就绪（防止 race condition）
-    setTimeout(async () => {
-      if (isLoggedIn.value) {
+    // 使用 watch 代替 setTimeout(500)，一旦登录成功且还没恢复过，立即执行
+    const unwatch = watch(() => isLoggedIn.value, async (loggedIn) => {
+      if (loggedIn) {
         try {
           const result = await loadWorkspaceFromCloud(lastWs.fileId, lastWs.source)
           if (result.success && result.data && result.data.content) {
@@ -49,11 +50,19 @@ onMounted(async () => {
           }
         } catch (e) {
           console.error('Auto restore failed:', e)
+        } finally {
+          unwatch() // 执行一次后停止监听
         }
-      } else {
-        warning(`未登录，无法自动恢复上次云端任务：${lastWs.name}`)
       }
-    }, 500)
+    }, { immediate: true })
+
+    // 如果 2秒内还没登录（比如游客模式或网络极慢），则提醒并停止监听
+    setTimeout(() => {
+      if (!isLoggedIn.value) {
+        warning(`未登录，无法自动恢复上次云端任务：${lastWs.name}`)
+        unwatch()
+      }
+    }, 2000)
   } else if (lastWs && lastWs.type === 'local') {
     success(`欢迎回来！上次任务：${lastWs.name} (本地文件需手动再次加载)`)
   }

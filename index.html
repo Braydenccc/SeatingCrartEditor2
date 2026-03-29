@@ -37,10 +37,29 @@
   </script>
 
   <title>BSCEv2</title>
+
+  <!-- Preconnect and Preload Critical Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Critical Path CSS: 提升首次内容渲染 (FCP) 速度，消除白屏感 -->
+  <style>
+    :root { --color-primary: #23587b; }
+    body, html { margin: 0; padding: 0; font-family: 'Inter', -apple-system, system-ui, sans-serif; background: #f5f5f5; }
+    .loading-overlay { position: fixed; inset: 0; background: #f5f5f5; z-index: 10000; transition: opacity 0.3s; }
+    .app-header-placeholder { height: 100px; background: var(--color-primary); box-shadow: 0 2px 8px rgba(0,0,0,0.15); width: 100%; }
+    @media (max-width: 1024px) { .app-header-placeholder { height: 90px; } }
+    @media (max-width: 768px) { .app-header-placeholder { height: 48px; } }
+  </style>
 </head>
 
 <body>
-  <div id="app"></div>
+  <div id="app">
+    <!-- 关键路径占位符：在 Vue 挂载前显示的 HTML 结构 -->
+    <div class="app-header-placeholder"></div>
+    <div style="height: calc(100vh - 100px); background: #f5f5f5;"></div>
+  </div>
   <script type="module" src="/src/main.js"></script>
 </body>
 

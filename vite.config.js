@@ -3,6 +3,7 @@ import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
+import viteCompression from 'vite-plugin-compression'
 
 import { authMockPlugin } from './vite.mock.plugin.js'
 
@@ -15,7 +16,10 @@ export default defineConfig({
   plugins: [
     vue(),
     vueDevTools(),
-    authMockPlugin()
+    authMockPlugin(),
+    // 为生产环境生成 .gz 和 .br 预压缩文件
+    viteCompression({ algorithm: 'gzip' }),
+    viteCompression({ algorithm: 'brotliCompress', ext: '.br' })
   ],
   resolve: {
     alias: {
