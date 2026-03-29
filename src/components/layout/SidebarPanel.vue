@@ -37,18 +37,18 @@
           </div>
 
           <div class="tab-header">
-            <h3>Excel导入导出</h3>
+            <h3>名单管理</h3>
           </div>
           <div class="options-group">
             <button class="option-button" @click="handleDownloadTemplate">
-              <span>下载空白模板</span>
+              <span>下载名单模板</span>
             </button>
             <input ref="excelInput" type="file" accept=".xlsx,.xls" style="display: none" @change="handleImportExcel" />
             <button class="option-button" @click="$refs.excelInput.click()">
-              <span>从Excel导入</span>
+              <span>从Excel导入名单</span>
             </button>
             <button class="option-button" @click="handleExportExcel">
-              <span>导出到Excel</span>
+              <span>导出名单到Excel</span>
             </button>
           </div>
         </div>
