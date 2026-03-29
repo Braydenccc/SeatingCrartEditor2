@@ -98,8 +98,17 @@
               </div>
             </template>
 
+            <!-- ======== WebDAV 导出设置 ======== -->
+            <div class="settings-section" v-if="authType === 'webdav'">
+              <h4>云端保存</h4>
+              <div class="setting-row">
+                <label>保存路径(网盘):</label>
+                <input v-model="exportSettings.webdavExportDir" type="text" placeholder="/sce_data" title="为空则默认使用 /sce_data" />
+              </div>
+            </div>
+
             <!-- ======== Excel 设置 ======== -->
-            <template v-else>
+            <template v-if="activeTab === 'excel'">
               <div class="settings-section">
                 <h4>内容</h4>
                 <div class="setting-row">
@@ -152,6 +161,7 @@
                   </div>
                 </div>
               </div>
+              <!-- WebDAV 设置在这里也可以显示，移动到外面了 -->
             </template>
           </div>
 
@@ -165,7 +175,7 @@
             </template>
 
             <!-- Excel 预览 -->
-            <template v-else>
+            <template v-if="activeTab === 'excel'">
               <div class="excel-preview-wrap">
                 <div class="excel-preview-hint">预览（与实际 Excel 文件布局一致）</div>
                 <div class="excel-preview-scroll" ref="excelScrollRef">
@@ -193,10 +203,16 @@
         <div class="dialog-footer">
           <button class="btn secondary" @click="$emit('close')">关闭</button>
           <template v-if="activeTab === 'image'">
-            <button class="btn primary" :disabled="isGenerating" @click="handleDownload">下载图片</button>
+            <button v-if="authType === 'webdav'" class="btn primary" style="background:#0ea5e9;" :disabled="isGenerating || isUploading" @click="handleCloudExportImage">
+              {{ isUploading ? '上传中...' : '保存至云盘' }}
+            </button>
+            <button class="btn primary" :disabled="isGenerating || isUploading" @click="handleDownload">下载图片</button>
           </template>
-          <template v-else>
-            <button class="btn excel" :disabled="isExcelDownloading" @click="handleExcelDownload">
+          <template v-if="activeTab === 'excel'">
+            <button v-if="authType === 'webdav'" class="btn excel" style="background:#059669;" :disabled="isExcelDownloading || isUploading" @click="handleCloudExportExcel">
+              {{ isUploading ? '上传中...' : '保存至云盘' }}
+            </button>
+            <button class="btn excel" :disabled="isExcelDownloading || isUploading" @click="handleExcelDownload">
               {{ isExcelDownloading ? '生成中...' : '下载 Excel' }}
             </button>
           </template>
@@ -215,6 +231,9 @@ import { useTagData } from '@/composables/useTagData'
 import { useExcelData } from '@/composables/useExcelData'
 import { useSeatChart } from '@/composables/useSeatChart'
 import { useStudentData } from '@/composables/useStudentData'
+import { useAuth } from '@/composables/useAuth'
+import { useWebDav } from '@/composables/useWebDav'
+import { useCloudWorkspace } from '@/composables/useCloudWorkspace'
 
 const props = defineProps({ visible: { type: Boolean, default: false } })
 const emit = defineEmits(['close', 'exported'])
@@ -222,9 +241,12 @@ const emit = defineEmits(['close', 'exported'])
 const { exportSettings, initializeTagSettings, updateTagSetting } = useExportSettings()
 const { exportToImage } = useImageExport()
 const { tags } = useTagData()
-const { exportSeatChartToExcel, generateSeatChartWorkbook } = useExcelData()
+const { exportSeatChartToExcel, exportSeatChartToExcelBuffer, generateSeatChartWorkbook } = useExcelData()
 const { organizedSeats, seatConfig } = useSeatChart()
 const { students } = useStudentData()
+const { authType, webdavConfig } = useAuth()
+const { putFile } = useWebDav()
+const { loadCloudSettings, saveCloudSettings } = useCloudWorkspace()
 
 const activeTab = ref('image')
 const previewUrl = ref('')
@@ -232,6 +254,7 @@ const isGenerating = ref(false)
 const isExcelDownloading = ref(false)
 const tagSettingsLocal = ref({})
 let debounceTimer = null
+const isUploading = ref(false)
 
 const excelScrollRef = ref(null)
 const excelContentRef = ref(null)
@@ -509,6 +532,7 @@ const handleDownload = async () => {
 
 // ── 下载 Excel ──
 const handleExcelDownload = async () => {
+  // ... existing options format ...
   isExcelDownloading.value = true
   try {
     const es = exportSettings.value
@@ -539,6 +563,88 @@ const handleExcelDownload = async () => {
     console.error('Excel 导出失败', e)
   } finally {
     isExcelDownloading.value = false
+  }
+}
+
+// ── WebDAV 上传 ──
+const getWebdavPath = (filename) => {
+  let dir = (exportSettings.value.webdavExportDir || '').trim()
+  if (!dir) dir = '/sce_data'
+  if (!dir.endsWith('/')) dir += '/'
+  if (!dir.startsWith('/')) dir = '/' + dir
+  return `${dir}${filename}`
+}
+
+const handleCloudExportImage = async () => {
+  let url = previewUrl.value
+  if (!url) {
+    isGenerating.value = true
+    try { url = await exportToImage(); previewUrl.value = url }
+    catch { return }
+    finally { isGenerating.value = false }
+  }
+  
+  isUploading.value = true
+  try {
+    const res = await fetch(url)
+    const blob = await res.blob()
+    const ts = new Date().toISOString().slice(0, 19).replace(/:/g, '-')
+    const filename = `座位表_${ts}.png`
+    const path = getWebdavPath(filename)
+    await putFile(webdavConfig.value, path, blob, 'image/png')
+    alert(`图片已成功保存到云盘: ${path}`)
+    
+    // Save settings back
+    saveCloudSettings({
+      webdavExportDir: exportSettings.value.webdavExportDir
+    })
+  } catch (err) {
+    alert('保存到云盘失败: ' + (err.message || '未知错误，请确保存储目录存在。'))
+  } finally {
+    isUploading.value = false
+  }
+}
+
+const handleCloudExportExcel = async () => {
+  isUploading.value = true
+  try {
+    const es = exportSettings.value
+    const buffer = exportSeatChartToExcelBuffer(
+      organizedSeats.value,
+      students.value,
+      tags.value,
+      seatConfig.value,
+      {
+        showStudentId:    es.excelShowStudentId,
+        showRowNumbers:   es.excelShowRowNumbers,
+        showGroupLabels:  es.excelShowGroupLabels,
+        showTitle:        es.excelShowTitle,
+        showPodium:       es.excelShowPodium,
+        reverseOrder:     es.excelReverseOrder,
+        showGroupGap:     es.excelShowGroupGap,
+        colorMode:        es.excelColorMode,
+        nameFontSize:     es.excelNameFontSize,
+        idFontSize:       es.excelIdFontSize,
+        cellWidth:        es.excelCellWidth,
+        seatRowHeight:    es.excelSeatRowHeight,
+        showTagTable:     es.excelShowTagTable,
+        tagTableNewSheet: es.excelTagTableNewSheet,
+        title:            es.title || '班级座位表'
+      }
+    )
+    const ts = new Date().toISOString().slice(0, 19).replace(/:/g, '-')
+    const filename = `座位表_${ts}.xlsx`
+    const path = getWebdavPath(filename)
+    await putFile(webdavConfig.value, path, buffer, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    alert(`Excel已成功保存到云盘: ${path}`)
+    
+    saveCloudSettings({
+      webdavExportDir: exportSettings.value.webdavExportDir
+    })
+  } catch (err) {
+    alert('保存到云盘失败: ' + (err.message || '未知错误，请确保存储目录存在。'))
+  } finally {
+    isUploading.value = false
   }
 }
 
@@ -583,10 +689,18 @@ watch(() => excelPreviewHtml.value, () => {
 })
 
 // ── 弹窗打开时初始化 ──
-watch(() => props.visible, (v) => {
+watch(() => props.visible, async (v) => {
   if (v) {
     initializeTagSettings(tags.value)
     initTagLocal()
+    
+    if (authType.value === 'webdav') {
+      const cloudSettings = await loadCloudSettings()
+      if (cloudSettings && cloudSettings.webdavExportDir !== undefined) {
+        exportSettings.value.webdavExportDir = cloudSettings.webdavExportDir
+      }
+    }
+
     if (activeTab.value === 'image') generatePreview()
   }
 })

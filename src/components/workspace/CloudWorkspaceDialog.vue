@@ -1,5 +1,5 @@
 <template>
-  <div v-if="visible" class="cloud-workspace-overlay" @click.self="close">
+  <div v-if="visible" class="cloud-workspace-overlay" @mousedown.self="close">
     <div class="cloud-workspace-dialog">
       <div class="dialog-header">
         <h3>{{ isSaveMode ? '保存工作区至云端' : '从云端加载工作区' }}</h3>
@@ -16,6 +16,28 @@
 
         <!-- Mode: Save -->
         <div v-else-if="isSaveMode" class="save-section">
+          <!-- 双云时显示目标选择器 -->
+          <div class="form-group" v-if="hasWebdav && hasRetiehe">
+            <label>保存到</label>
+            <div class="save-target-selection">
+              <label class="radio-label" v-if="hasRetiehe">
+                <input type="radio" value="retiehe" v-model="targetService" />
+                <span>SCE 云服务</span>
+              </label>
+              <label class="radio-label" v-if="hasWebdav">
+                <input type="radio" value="webdav" v-model="targetService" />
+                <span>WebDAV 网盘</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- 单云时显示目标提示条 -->
+          <div v-else class="save-target-banner">
+            <span class="banner-icon">{{ hasRetiehe ? '☁️' : '📡' }}</span>
+            <span>保存至：<strong>{{ hasRetiehe ? 'SCE 云服务' : 'WebDAV 网盘' }}</strong></span>
+            <span v-if="backupMode && hasWebdav !== false" class="backup-hint">· 同时备份至 WebDAV ✓</span>
+          </div>
+
           <div class="form-group">
             <label>工作区名称</label>
             <input 
@@ -24,14 +46,15 @@
               placeholder="例如：2026级二班座位表" 
               maxlength="50"
               @keyup.enter="handleSave"
+              autofocus
             />
           </div>
           
-          <div v-if="workspaces.length > 0" class="existing-workspaces">
-            <p class="section-title">或覆盖现有工作区：</p>
+          <div v-if="targetWorkspaces.length > 0" class="existing-workspaces">
+            <p class="section-title">点击覆盖已有工作区：</p>
             <div class="workspace-list small">
               <div 
-                v-for="ws in workspaces" 
+                v-for="ws in targetWorkspaces" 
                 :key="ws.fileId"
                 class="workspace-item"
                 @click="selectForOverwrite(ws)"
@@ -49,34 +72,47 @@
           
           <div class="dialog-actions">
             <button class="btn-primary" @click="handleSave" :disabled="isSaving || !workspaceName.trim()">
-              {{ isSaving ? '保存中...' : (selectedOverwriteId ? '覆盖保存' : '新建保存') }}
+              {{ isSaving ? '保存中...' : (selectedOverwriteId ? '覆盖已有工作区' : '保存为新工作区') }}
             </button>
           </div>
         </div>
 
         <!-- Mode: Load -->
         <div v-else class="load-section">
-          <div v-if="workspaces.length === 0" class="empty-state">
-            云端暂无保存的工作区
+          <!-- 双云时显示 Tab 切换 -->
+          <div class="cloud-tabs" v-if="hasWebdav && hasRetiehe">
+            <button :class="{ active: activeTab === 'retiehe' }" @click="activeTab = 'retiehe'">SCE 云服务</button>
+            <button :class="{ active: activeTab === 'webdav' }" @click="activeTab = 'webdav'">WebDAV 网盘</button>
           </div>
-          <div v-else class="workspace-grid">
+          <!-- 单云时显示来源说明 -->
+          <div v-else class="cloud-source-label">
+            <span>{{ hasRetiehe ? '☁️ SCE 云服务' : '📡 WebDAV 网盘' }}</span>
+            <span v-if="backupMode" class="backup-tag">备份模式</span>
+          </div>
+          
+          <div v-if="!currentTabWorkspaces || currentTabWorkspaces.length === 0" class="empty-state mt-2">
+            <div class="empty-icon">📭</div>
+            <p>{{ activeTab === 'webdav' ? 'WebDAV 网盘上' : 'SCE 云端' }}暂无工作区</p>
+            <p class="empty-hint">切换到「保存」模式将当前编辑内容上传到云端</p>
+          </div>
+          <div v-else class="workspace-grid mt-2">
             <div 
-              v-for="ws in workspaces" 
+              v-for="ws in currentTabWorkspaces" 
               :key="ws.fileId"
               class="workspace-card"
             >
-              <div class="card-content" @click="handleLoad(ws.fileId)">
+              <div class="card-content" @click="handleLoad(ws.fileId, ws.source)">
                 <div class="card-icon">📁</div>
                 <div class="card-details">
                   <h4 class="ws-name">{{ ws.metadata.name }}</h4>
                   <p class="ws-meta">
-                    {{ formatDate(ws.metadata.time) }}<br/>
-                    大小: {{ formatSize(ws.metadata.size) }}
+                    {{ formatDate(ws.metadata.time) }}
+                    <span v-if="ws.metadata.size"> · {{ formatSize(ws.metadata.size) }}</span>
                   </p>
                 </div>
               </div>
               <div class="card-actions">
-                <button class="icon-btn delete-btn" title="删除" @click.stop="confirmDelete(ws)">🗑️</button>
+                <button class="icon-btn delete-btn" title="删除此工作区" @click.stop="confirmDelete(ws)">🗑️</button>
               </div>
             </div>
           </div>
@@ -89,11 +125,12 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { useCloudWorkspace } from '@/composables/useCloudWorkspace'
 import { useWorkspace } from '@/composables/useWorkspace'
 import { useLogger } from '@/composables/useLogger'
 import { useConfirmAction } from '@/composables/useConfirmAction'
+import { useAuth } from '@/composables/useAuth'
 
 const props = defineProps({
   visible: Boolean,
@@ -109,6 +146,7 @@ const { isFetching, listWorkspaces, saveWorkspaceToCloud, loadWorkspaceFromCloud
 const { getWorkspaceJson, applyWorkspaceData } = useWorkspace() // We need to modify useWorkspace to export these
 const { success, error } = useLogger()
 const { requestConfirm } = useConfirmAction()
+const { currentUser, webdavConfig, authType, backupMode } = useAuth()
 
 const isSaveMode = ref(false)
 const workspaces = ref([])
@@ -117,22 +155,46 @@ const selectedOverwriteId = ref(null)
 const errorMessage = ref('')
 const isSaving = ref(false)
 
+const hasRetiehe = computed(() => !!currentUser.value)
+const hasWebdav = computed(() => !!webdavConfig.value && !(backupMode.value && hasRetiehe.value))
+const activeTab = ref('retiehe')
+const targetService = ref('retiehe')
+
+const webdavWorkspaces = computed(() => workspaces.value.filter(ws => ws.source === 'webdav'))
+const retieheWorkspaces = computed(() => workspaces.value.filter(ws => ws.source === 'retiehe'))
+const currentTabWorkspaces = computed(() => activeTab.value === 'webdav' ? webdavWorkspaces.value : retieheWorkspaces.value)
+const targetWorkspaces = computed(() => targetService.value === 'webdav' ? webdavWorkspaces.value : retieheWorkspaces.value)
+
 watch(() => props.visible, async (newVal) => {
   if (newVal) {
     isSaveMode.value = props.mode === 'save'
     workspaceName.value = ''
     selectedOverwriteId.value = null
     errorMessage.value = ''
+    
+    // Auto-select tab and target based on active authType setting
+    if (authType.value === 'webdav' && hasWebdav.value) {
+      activeTab.value = 'webdav'
+      targetService.value = 'webdav'
+    } else if (hasRetiehe.value) {
+      activeTab.value = 'retiehe'
+      targetService.value = 'retiehe'
+    } else if (hasWebdav.value) {
+      activeTab.value = 'webdav'
+      targetService.value = 'webdav'
+    }
+
     await fetchWorkspaces()
   }
 })
 
 const fetchWorkspaces = async () => {
   const result = await listWorkspaces()
-  if (result.success) {
+  if (result.success || result.data?.length > 0) {
     workspaces.value = result.data || []
-  } else {
-    errorMessage.value = result.message || '获取云文件列表失败'
+  }
+  if (!result.success && result.message) {
+    errorMessage.value = result.message
   }
 }
 
@@ -162,7 +224,7 @@ const handleSave = async () => {
     // 检查是否重名，如果重名强制转为覆盖
     let targetFileId = selectedOverwriteId.value
     if (!targetFileId) {
-       const existingWs = workspaces.value.find(ws => ws.metadata.name === trimmedName)
+       const existingWs = targetWorkspaces.value.find(ws => ws.metadata.name === trimmedName)
        if (existingWs) {
          targetFileId = existingWs.fileId
        }
@@ -177,7 +239,8 @@ const handleSave = async () => {
     const result = await saveWorkspaceToCloud(
       trimmedName, 
       jsonContent, 
-      targetFileId
+      targetFileId,
+      targetService.value
     )
     
     if (result.success) {
@@ -196,13 +259,13 @@ const handleSave = async () => {
   }
 }
 
-const handleLoad = async (fileId) => {
+const handleLoad = async (fileId, source) => {
   if (isFetching.value) return
   
   errorMessage.value = ''
   
   try {
-    const result = await loadWorkspaceFromCloud(fileId)
+    const result = await loadWorkspaceFromCloud(fileId, source)
     if (result.success && result.data && result.data.content) {
       let workspaceData;
       if (typeof result.data.content === 'string') {
@@ -234,7 +297,7 @@ const handleLoad = async (fileId) => {
 
 const confirmDelete = (ws) => {
   if (requestConfirm(`delete_${ws.fileId}`, async () => {
-    const result = await deleteWorkspaceFromCloud(ws.fileId)
+    const result = await deleteWorkspaceFromCloud(ws.fileId, ws.source)
     if (result.success) {
       success(`文件 ${ws.metadata.name} 已删除`)
       await fetchWorkspaces()
@@ -276,6 +339,87 @@ const formatSize = (bytes) => {
   align-items: center;
   justify-content: center;
   z-index: 9999;
+}
+
+.save-target-selection {
+  display: flex;
+  gap: 16px;
+  background: #f8fafc;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.save-target-banner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #f0f7ff;
+  border: 1px solid #bfdbfe;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #1e40af;
+  margin-bottom: 16px;
+}
+
+.save-target-banner .banner-icon {
+  font-size: 15px;
+}
+
+.backup-hint {
+  color: #059669;
+  font-weight: 500;
+}
+
+.cloud-tabs {
+  display: flex;
+  background: #f1f5f9;
+  padding: 4px;
+  border-radius: 8px;
+  margin-bottom: 4px;
+}
+
+.cloud-tabs button {
+  flex: 1;
+  padding: 8px 0;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cloud-tabs button.active {
+  background: white;
+  color: #23587b;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.cloud-source-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #475569;
+  font-weight: 500;
+  padding: 6px 0;
+  margin-bottom: 4px;
+}
+
+.backup-tag {
+  background: #d1fae5;
+  color: #065f46;
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.mt-2 {
+  margin-top: 8px;
 }
 
 .cloud-workspace-dialog {
@@ -519,11 +663,27 @@ const formatSize = (bytes) => {
 
 .empty-state {
   text-align: center;
-  padding: 40px 20px;
+  padding: 32px 20px;
   color: #94a3b8;
   background: #f8fafc;
   border-radius: 8px;
   border: 1px dashed #cbd5e1;
+}
+
+.empty-state .empty-icon {
+  font-size: 32px;
+  margin-bottom: 8px;
+}
+
+.empty-state p {
+  margin: 0 0 4px;
+  font-size: 14px;
+  color: #64748b;
+}
+
+.empty-state .empty-hint {
+  font-size: 12px;
+  color: #94a3b8;
 }
 
 .error-message {

@@ -1,4 +1,5 @@
 const http = require('http');
+const https = require('https');
 const path = require('path');
 const { readFile } = require('fs').promises;
 
@@ -56,6 +57,46 @@ const server = http.createServer(async (req, res) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'no-referrer');
+
+  // Intercept WebDAV proxy requests to bypass CORS
+  if (req.url.startsWith('/api/dav-proxy')) {
+    const davUrl = req.headers['x-dav-url'];
+    if (!davUrl) {
+      res.statusCode = 400;
+      return res.end('Missing x-dav-url header');
+    }
+    try {
+      const targetUrl = new URL(davUrl);
+      const options = {
+        hostname: targetUrl.hostname,
+        port: targetUrl.port,
+        path: targetUrl.pathname + targetUrl.search,
+        method: req.method,
+        headers: { ...req.headers }
+      };
+      delete options.headers['host'];
+      delete options.headers['x-dav-url'];
+      delete options.headers['connection'];
+      delete options.headers['origin'];
+      delete options.headers['referer'];
+
+      const client = targetUrl.protocol === 'https:' ? https : http;
+      const proxyReq = client.request(options, (proxyRes) => {
+        res.writeHead(proxyRes.statusCode, proxyRes.headers);
+        proxyRes.pipe(res, { end: true });
+      });
+      proxyReq.on('error', (err) => {
+        console.error('WebDAV Proxy Error:', err);
+        res.statusCode = 502;
+        res.end('Proxy error: ' + err.message);
+      });
+      req.pipe(proxyReq, { end: true });
+    } catch (err) {
+      res.statusCode = 400;
+      res.end('Invalid URL');
+    }
+    return;
+  }
 
   try {
     let urlPath;

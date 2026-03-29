@@ -104,6 +104,38 @@ try {
         } else {
             echo json_encode(['success' => false, 'message' => '用户名或密码不正确']);
         }
+    } elseif ($action === 'set_settings') {
+        $token = isset($input['token']) ? trim($input['token']) : null;
+        if (!$token || !$username) {
+            echo json_encode(['success' => false, 'message' => '未授权访问']);
+            exit(0);
+        }
+        $expectedPrefix = $username . ':';
+        $decodedToken = base64_decode($token);
+        if (strpos($decodedToken, $expectedPrefix) !== 0) {
+            echo json_encode(['success' => false, 'message' => 'Token过期或无效']);
+            exit(0);
+        }
+        $settingsDb = new Database("users_settings");
+        $settingsStr = isset($input['settings']) ? json_encode($input['settings'], JSON_UNESCAPED_UNICODE) : '{}';
+        $settingsDb->set($username, $settingsStr);
+        echo json_encode(['success' => true, 'message' => '设置已保存']);
+    } elseif ($action === 'get_settings') {
+        $token = isset($input['token']) ? trim($input['token']) : null;
+        if (!$token || !$username) {
+            echo json_encode(['success' => false, 'message' => '未授权访问']);
+            exit(0);
+        }
+        $expectedPrefix = $username . ':';
+        $decodedToken = base64_decode($token);
+        if (strpos($decodedToken, $expectedPrefix) !== 0) {
+            echo json_encode(['success' => false, 'message' => 'Token过期或无效']);
+            exit(0);
+        }
+        $settingsDb = new Database("users_settings");
+        $settingsStr = $settingsDb->get($username);
+        $settings = $settingsStr ? json_decode($settingsStr, true) : null;
+        echo json_encode(['success' => true, 'data' => $settings]);
     } else {
         echo json_encode(['success' => false, 'message' => 'Unknown action']);
     }

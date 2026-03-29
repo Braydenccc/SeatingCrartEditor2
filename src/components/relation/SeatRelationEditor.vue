@@ -1,5 +1,5 @@
 <template>
-  <div v-if="visible" class="modal-overlay" @click.self="close">
+  <div v-if="visible" class="modal-overlay" @mousedown.self="close">
     <div class="modal-container">
       <div class="modal-header">
         <h3>座位联系编辑</h3>

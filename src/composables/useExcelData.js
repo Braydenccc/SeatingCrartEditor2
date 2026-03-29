@@ -484,11 +484,20 @@ export function useExcelData() {
     XLSX.writeFile(wb, `座位表_${timestamp}.xlsx`)
   }
 
+  /**
+   * 将座位表导出为 ArrayBuffer, 供上传云端使用
+   */
+  const exportSeatChartToExcelBuffer = (organizedSeats, students, tags = [], seatConfig, options = {}) => {
+    const { wb } = generateSeatChartWorkbook(organizedSeats, students, tags, seatConfig, options)
+    return XLSX.write(wb, { type: 'array', bookType: 'xlsx' })
+  }
+
   return {
     downloadTemplate,
     importFromExcel,
     exportToExcel,
     generateSeatChartWorkbook,
-    exportSeatChartToExcel
+    exportSeatChartToExcel,
+    exportSeatChartToExcelBuffer
   }
 }

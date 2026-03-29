@@ -16,7 +16,7 @@
     </div>
 
     <!-- 添加/编辑标签对话框 -->
-    <div v-if="dialogVisible" class="dialog-overlay" @click.self="closeDialog">
+    <div v-if="dialogVisible" class="dialog-overlay" @mousedown.self="closeDialog">
       <div class="dialog">
         <h3>{{ isEditing ? '编辑标签' : '新建标签' }}</h3>
         <div class="form-group">

@@ -7,20 +7,28 @@ import SidebarPanel from './components/layout/SidebarPanel.vue'
 import LoginDialog from './components/auth/LoginDialog.vue'
 import { useAuth } from '@/composables/useAuth'
 
+import { ref } from 'vue'
+
 const { isLoginDialogVisible, initAuth } = useAuth()
+
+const loginDialogInitialTab = ref('login')
+const handleOpenLogin = (tab = 'login') => {
+  loginDialogInitialTab.value = tab
+  isLoginDialogVisible.value = true
+}
 
 // Restore auth state from cookies on app startup
 initAuth()
 </script>
 
 <template>
-  <AppHeader @open-login="isLoginDialogVisible = true" />
+  <AppHeader @open-login="handleOpenLogin" />
   <main class="main-content">
     <EditorPanel />
     <SidebarPanel />
   </main>
   
-  <LoginDialog v-model:visible="isLoginDialogVisible" />
+  <LoginDialog v-model:visible="isLoginDialogVisible" :initial-tab="loginDialogInitialTab" />
 </template>
 
 <style scoped>

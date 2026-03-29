@@ -41,7 +41,8 @@ const exportSettings = ref({
   excelSeatRowHeight: 40,        // 座位行高 (hpt)
   excelShowTagTable: false,      // 导出标签统计表
   excelTagTableNewSheet: false,  // 标签表放在独立工作表
-  tagSettings: {} // 格式: { tagId: { enabled: true, displayText: '文本' } }
+  tagSettings: {}, // 格式: { tagId: { enabled: true, displayText: '文本' } }
+  webdavExportDir: '' // 云端导出的自定义路径, 为空表示跟目录或系统默认
 })
 
 export function useExportSettings() {

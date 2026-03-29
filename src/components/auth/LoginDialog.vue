@@ -1,5 +1,5 @@
 <template>
-  <div v-if="visible" class="login-overlay" @click.self="close">
+  <div v-if="visible" class="login-overlay" @mousedown.self="close">
     <div class="login-dialog">
       <div class="dialog-header">
         <h3>{{ isLoginMode ? '账号登录' : '注册账号' }}</h3>
@@ -8,39 +8,78 @@
 
       <div class="dialog-body">
         <div class="tabs">
-          <button :class="{ active: isLoginMode }" @click="isLoginMode = true">登录</button>
-          <button :class="{ active: !isLoginMode }" @click="isLoginMode = false">注册</button>
+          <button :class="{ active: tabMode === 'login' }" @click="tabMode = 'login'">登录</button>
+          <button :class="{ active: tabMode === 'register' }" @click="tabMode = 'register'">注册</button>
+          <button :class="{ active: tabMode === 'webdav' }" @click="tabMode = 'webdav'">WebDAV</button>
         </div>
-        <div style="color: #ef4444; font-size: 13px; margin-bottom: 16px; text-align: center;">
+        <div v-if="tabMode !== 'webdav'" style="color: #ef4444; font-size: 13px; margin-bottom: 16px; text-align: center;">
           本账号服务不保证可用性，请妥善备份您的数据
+        </div>
+        <div v-else style="color: #64748b; font-size: 13px; margin-bottom: 16px; text-align: center;">
+          通过 WebDAV 连接网盘以使用云端工作区。连接需要跨域(CORS)支持。
         </div>
 
         <form @submit.prevent="handleSubmit">
-          <div class="form-group">
-            <label>用户名</label>
-            <input 
-              type="text" 
-              v-model="username" 
-              placeholder="请输入字母或数字" 
-              required 
-              maxlength="32"
-              pattern="[A-Za-z0-9_-]+"
-              title="只能包含字母、数字、下划线和连字符"
-              autocomplete="username"
-            />
-          </div>
+          <template v-if="tabMode === 'webdav'">
+            <div class="form-group">
+              <label>服务器地址(URL)</label>
+              <input 
+                type="url" 
+                v-model="webdavUrl" 
+                placeholder="例如: https://pan.example.com/dav" 
+                required 
+                autocomplete="off"
+              />
+            </div>
+            <div class="form-group">
+              <label>用户名</label>
+              <input 
+                type="text" 
+                v-model="webdavUser" 
+                placeholder="请输入WebDAV用户名" 
+                required 
+                autocomplete="off"
+              />
+            </div>
+            <div class="form-group">
+              <label>密码</label>
+              <input 
+                type="password" 
+                v-model="webdavPass" 
+                placeholder="请输入WebDAV密码/Token" 
+                required 
+                autocomplete="new-password"
+              />
+            </div>
+          </template>
+          
+          <template v-else>
+            <div class="form-group">
+              <label>用户名</label>
+              <input 
+                type="text" 
+                v-model="username" 
+                placeholder="请输入字母或数字" 
+                required 
+                maxlength="32"
+                pattern="[A-Za-z0-9_-]+"
+                title="只能包含字母、数字、下划线和连字符"
+                autocomplete="username"
+              />
+            </div>
 
-          <div class="form-group">
-            <label>密码</label>
-            <input 
-              type="password" 
-              v-model="password" 
-              placeholder="请输入密码" 
-              required 
-              minlength="6"
-              autocomplete="current-password"
-            />
-          </div>
+            <div class="form-group">
+              <label>密码</label>
+              <input 
+                type="password" 
+                v-model="password" 
+                placeholder="请输入密码" 
+                required 
+                minlength="6"
+                autocomplete="current-password"
+              />
+            </div>
+          </template>
 
           <div v-if="errorMessage" class="error-message">
             {{ errorMessage }}
@@ -51,7 +90,7 @@
 
           <div class="dialog-actions">
             <button type="submit" class="btn-primary" :disabled="loading">
-              {{ loading ? '处理中...' : (isLoginMode ? '登录' : '注册并登录') }}
+              {{ loading ? '处理中...' : (tabMode === 'login' ? '登录' : (tabMode === 'register' ? '注册并登录' : '连接并创建文件夹')) }}
             </button>
           </div>
         </form>
@@ -61,23 +100,34 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { useAuth } from '@/composables/useAuth'
+import { useWebDav } from '@/composables/useWebDav'
 
 const props = defineProps({
-  visible: Boolean
+  visible: Boolean,
+  initialTab: {
+    type: String,
+    default: 'login'
+  }
 })
 
 const emit = defineEmits(['update:visible', 'success'])
 
-const { login, register } = useAuth()
+const { login, register, setWebdavLogin } = useAuth()
+const { mkcol } = useWebDav()
 
-const isLoginMode = ref(true)
+const tabMode = ref('login') // 'login', 'register', 'webdav'
 const username = ref('')
 const password = ref('')
+const webdavUrl = ref('')
+const webdavUser = ref('')
+const webdavPass = ref('')
 const loading = ref(false)
 const errorMessage = ref('')
 const successMessage = ref('')
+
+const isLoginMode = computed(() => tabMode.value === 'login')
 
 watch(() => props.visible, (newVal) => {
   if (newVal) {
@@ -86,7 +136,7 @@ watch(() => props.visible, (newVal) => {
     password.value = ''
     errorMessage.value = ''
     successMessage.value = ''
-    isLoginMode.value = true
+    tabMode.value = props.initialTab || 'login'
   }
 })
 
@@ -98,6 +148,36 @@ const handleSubmit = async () => {
   errorMessage.value = ''
   successMessage.value = ''
   
+  if (tabMode.value === 'webdav') {
+    if (!webdavUrl.value.trim() || !webdavUser.value.trim() || !webdavPass.value.trim()) {
+      errorMessage.value = '请填写完整的 WebDAV 信息'
+      return
+    }
+    
+    loading.value = true
+    try {
+      const config = {
+        url: webdavUrl.value.trim(),
+        username: webdavUser.value.trim(),
+        password: webdavPass.value.trim()
+      }
+      // 验证连接并创建 sce_data 文件夹
+      await mkcol(config, 'sce_data')
+      
+      setWebdavLogin(config)
+      successMessage.value = 'WebDAV 连接并初始化成功'
+      setTimeout(() => {
+        close()
+        emit('success')
+      }, 500)
+    } catch (err) {
+      errorMessage.value = err.message || 'WebDAV 连接失败，请检查账号密码或CORS设置'
+    } finally {
+      loading.value = false
+    }
+    return
+  }
+
   if (!username.value.trim() || !password.value.trim()) {
     errorMessage.value = '用户名和密码不能为空'
     return
@@ -106,7 +186,7 @@ const handleSubmit = async () => {
   loading.value = true
   
   try {
-    const action = isLoginMode.value ? login : register
+    const action = tabMode.value === 'login' ? login : register
     const result = await action(username.value.trim(), password.value)
 
     if (result.success) {

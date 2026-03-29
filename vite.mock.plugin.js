@@ -36,12 +36,11 @@ export function authMockPlugin() {
 
                             const { action, username, password } = input
 
-                            if (!username || !password) {
-                                res.statusCode = 400;
-                                return res.end(JSON.stringify({ success: false, message: '用户名和密码不能为空' }))
-                            }
-
                             if (action === 'register') {
+                                if (!username || !password) {
+                                    res.statusCode = 400;
+                                    return res.end(JSON.stringify({ success: false, message: '用户名和密码不能为空' }))
+                                }
                                 if (db[username]) {
                                     return res.end(JSON.stringify({ success: false, message: '该用户名已被注册' }))
                                 }
@@ -56,6 +55,10 @@ export function authMockPlugin() {
                                     data: { username, token }
                                 }))
                             } else if (action === 'login') {
+                                if (!username || !password) {
+                                    res.statusCode = 400;
+                                    return res.end(JSON.stringify({ success: false, message: '用户名和密码不能为空' }))
+                                }
                                 const existingHash = db[username]
                                 if (!existingHash) {
                                     return res.end(JSON.stringify({ success: false, message: '用户名或密码不正确' }))
@@ -71,6 +74,35 @@ export function authMockPlugin() {
                                     }))
                                 } else {
                                     return res.end(JSON.stringify({ success: false, message: '用户名或密码不正确' }))
+                                }
+                            } else if (action === 'set_settings' || action === 'get_settings') {
+                                const token = input.token
+                                if (!token || !username) {
+                                    res.statusCode = 401;
+                                    return res.end(JSON.stringify({ success: false, message: '未授权的访问' }))
+                                }
+                                const expectedPrefix = username + ':'
+                                const decodedToken = Buffer.from(token, 'base64').toString('utf8')
+                                if (!decodedToken.startsWith(expectedPrefix)) {
+                                    res.statusCode = 401;
+                                    return res.end(JSON.stringify({ success: false, message: 'Token无效或已过期' }))
+                                }
+
+                                const settingsDbPath = path.resolve('.local-users-settings.json')
+                                let settingsDb = {}
+                                try {
+                                    const data = await fs.readFile(settingsDbPath, 'utf8')
+                                    settingsDb = JSON.parse(data)
+                                } catch (e) {
+                                    // file not exists, use empty db
+                                }
+
+                                if (action === 'set_settings') {
+                                    settingsDb[username] = input.settings || {}
+                                    await fs.writeFile(settingsDbPath, JSON.stringify(settingsDb, null, 2))
+                                    return res.end(JSON.stringify({ success: true, message: '设置已保存' }))
+                                } else {
+                                    return res.end(JSON.stringify({ success: true, data: settingsDb[username] || null }))
                                 }
                             } else {
                                 return res.end(JSON.stringify({ success: false, message: 'Unknown action' }))
@@ -234,6 +266,49 @@ export function authMockPlugin() {
                             return res.end(JSON.stringify({ success: false, message: 'Internal Server Error' }))
                         }
                     })
+                    return
+                }
+
+                if (req.url.startsWith('/api/dav-proxy')) {
+                    const davUrl = req.headers['x-dav-url']
+                    if (!davUrl) {
+                        res.statusCode = 400
+                        return res.end('Missing x-dav-url header')
+                    }
+                    try {
+                        const targetUrl = new URL(davUrl)
+                        const options = {
+                            hostname: targetUrl.hostname,
+                            port: targetUrl.port,
+                            path: targetUrl.pathname + targetUrl.search,
+                            method: req.method,
+                            headers: { ...req.headers }
+                        }
+                        delete options.headers['host']
+                        delete options.headers['x-dav-url']
+                        delete options.headers['connection']
+                        delete options.headers['origin']
+                        delete options.headers['referer']
+
+                        const http = await import('http')
+                        const https = await import('https')
+                        const client = targetUrl.protocol === 'https:' ? https : http
+
+                        const proxyReq = client.request(options, (proxyRes) => {
+                            res.writeHead(proxyRes.statusCode, proxyRes.headers)
+                            proxyRes.pipe(res, { end: true })
+                        })
+                        proxyReq.on('error', (err) => {
+                            console.error('WebDAV Proxy Error:', err)
+                            res.statusCode = 502
+                            res.end('Proxy error: ' + err.message)
+                        })
+                        req.pipe(proxyReq, { end: true })
+                    } catch (err) {
+                        console.error('Invalid URL:', err)
+                        res.statusCode = 400
+                        res.end('Invalid URL')
+                    }
                     return
                 }
 

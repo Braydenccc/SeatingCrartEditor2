@@ -3,17 +3,30 @@
     <div class="header-left">
       <div v-if="isLoggedIn" class="user-menu-container" ref="menuContainer">
         <div class="user-info" @click="toggleDropdown">
-          <span class="user-avatar">👤</span>
-          <span class="welcome-text">{{ currentUser.username }}</span>
+          <span class="user-avatar" :title="authType === 'webdav' ? 'WebDAV 模式' : '普通账号'">{{ authType === 'webdav' ? '☁️' : '👤' }}</span>
+          <span class="welcome-text">{{ currentUser?.username }}</span>
           <span class="dropdown-icon">▼</span>
         </div>
         <Transition name="fade-slide">
           <div v-if="showDropdown" class="user-dropdown">
+            <!-- Sync Service Settings entry -->
+            <button v-if="hasRetiehe" class="dropdown-item" @click="openSyncSettings">
+              <span class="item-icon">⚙️</span> 同步设置
+            </button>
+            <div class="dropdown-divider" v-if="hasRetiehe"></div>
+            
             <button class="dropdown-item" @click="openWorkspaceManagement">
               <span class="item-icon">☁️</span> 工作区管理
             </button>
-            <button class="dropdown-item text-danger" @click="handleLogout">
-              <span class="item-icon">🚪</span> 退出登录
+
+            <button v-if="!hasRetiehe" class="dropdown-item" @click="emit('open-login', 'login'); showDropdown = false">
+              <span class="item-icon">➕</span> 登录 SCE 账号
+            </button>
+            
+            <div class="dropdown-divider"></div>
+            
+            <button class="dropdown-item text-danger" @click="handleLogout('all')">
+              {{ hasRetiehe ? '退出 SCE 账号' : '退出 WebDAV' }}
             </button>
           </div>
         </Transition>
@@ -38,21 +51,30 @@
       mode="load" 
       @update:visible="showWorkspaceManagement = $event" 
     />
+    <SyncSettingsDialog 
+      :visible="showSyncSettings" 
+      @update:visible="showSyncSettings = $event" 
+    />
   </header>
 </template>
 
 <script setup>
-import { onMounted, ref, onBeforeUnmount } from 'vue'
+import { onMounted, ref, onBeforeUnmount, computed } from 'vue'
 import { useAuth } from '@/composables/useAuth'
 import CloudWorkspaceDialog from '../workspace/CloudWorkspaceDialog.vue'
+import SyncSettingsDialog from '../auth/SyncSettingsDialog.vue'
 
 const emit = defineEmits(['open-login'])
 
-const { currentUser, isLoggedIn, logout, initAuth } = useAuth()
+const { currentUser, webdavConfig, isLoggedIn, logout, authType, initAuth } = useAuth()
 
 const showDropdown = ref(false)
 const showWorkspaceManagement = ref(false)
+const showSyncSettings = ref(false)
 const menuContainer = ref(null)
+
+const hasRetiehe = computed(() => !!currentUser.value)
+const hasWebdav = computed(() => !!webdavConfig.value)
 
 const toggleDropdown = () => {
   showDropdown.value = !showDropdown.value
@@ -63,8 +85,13 @@ const openWorkspaceManagement = () => {
   showDropdown.value = false
 }
 
-const handleLogout = () => {
-  logout()
+const openSyncSettings = () => {
+  showSyncSettings.value = true
+  showDropdown.value = false
+}
+
+const handleLogout = (target) => {
+  logout(target)
   showDropdown.value = false
 }
 
@@ -162,6 +189,42 @@ onBeforeUnmount(() => {
 .fade-slide-leave-to {
   opacity: 0;
   transform: translateY(-10px);
+}
+
+.dropdown-group {
+  padding: 12px 16px;
+  background: #f8fafc;
+}
+
+.group-title {
+  font-size: 12px;
+  color: #64748b;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #334155;
+  margin-bottom: 6px;
+  cursor: pointer;
+}
+
+.radio-label:last-child {
+  margin-bottom: 0;
+}
+
+.disabled-text {
+  color: #94a3b8;
+}
+
+.dropdown-divider {
+  height: 1px;
+  background: #e2e8f0;
+  margin: 4px 0;
 }
 
 .header-text {
