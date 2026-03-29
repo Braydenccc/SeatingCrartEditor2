@@ -417,7 +417,7 @@ const { students, addStudent, updateStudent, clearAllStudents } = useStudentData
 const { exportSettings } = useExportSettings()
 const { exportToImage } = useImageExport()
 const { downloadTemplate, importFromExcel, exportToExcel } = useExcelData()
-const { saveWorkspace, loadWorkspace, applyWorkspaceData } = useWorkspace()
+const { saveWorkspace, loadWorkspace, applyWorkspaceData, saveLastWorkspace } = useWorkspace()
 const { logs, success, warning, error, clearLogs } = useLogger()
 const { requestConfirm, isConfirming } = useConfirmAction()
 const { ruleCount } = useSeatRules()
@@ -604,6 +604,8 @@ const handleLoadWorkspace = async (event) => {
       const isSuccess = await applyWorkspaceData(workspace)
       if (isSuccess) {
         success('工作区加载并恢复成功！')
+        // 记录到 Cookie
+        saveLastWorkspace({ type: 'local', name: file.name })
       }
     } catch (err) {
       error('恢复工作区时发生错误: ' + (err.message || err))

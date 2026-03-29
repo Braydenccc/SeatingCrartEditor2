@@ -5,6 +5,9 @@ import { useExportSettings } from './useExportSettings'
 import { useZoneData } from './useZoneData'
 import { useSeatRules } from './useSeatRules'
 import { useLogger } from './useLogger'
+import { setCookie, getCookie } from './useAuth'
+
+const LAST_WORKSPACE_COOKIE = 'sce_last_workspace'
 
 const FILE_EXT = '.sce'
 const CURRENT_VERSION = '2.0'
@@ -332,7 +335,27 @@ export function useWorkspace() {
     return ws
   }
 
+  const saveLastWorkspace = (info) => {
+    try {
+      if (!info) return
+      setCookie(LAST_WORKSPACE_COOKIE, JSON.stringify(info), 30) // 30 days
+    } catch (e) {
+      console.error('Save last workspace failed:', e)
+    }
+  }
+
+  const getLastWorkspace = () => {
+    try {
+      const saved = getCookie(LAST_WORKSPACE_COOKIE)
+      return saved ? JSON.parse(saved) : null
+    } catch (e) {
+      return null
+    }
+  }
+
   return {
+    saveLastWorkspace,
+    getLastWorkspace,
     saveWorkspace,
     loadWorkspace,
     getWorkspaceJson,

@@ -145,7 +145,7 @@ const props = defineProps({
 const emit = defineEmits(['update:visible', 'success'])
 
 const { isFetching, listWorkspaces, saveWorkspaceToCloud, loadWorkspaceFromCloud, deleteWorkspaceFromCloud } = useCloudWorkspace()
-const { getWorkspaceJson, applyWorkspaceData } = useWorkspace() // We need to modify useWorkspace to export these
+const { getWorkspaceJson, applyWorkspaceData, saveLastWorkspace } = useWorkspace()
 const { success, error } = useLogger()
 const { requestConfirm } = useConfirmAction()
 const { currentUser, webdavConfig, authType, backupMode } = useAuth()
@@ -247,6 +247,15 @@ const handleSave = async () => {
     
     if (result.success) {
       success('工作区已保存至云端！')
+      
+      // 记录到 Cookie
+      saveLastWorkspace({ 
+        type: 'cloud', 
+        name: trimmedName, 
+        fileId: targetFileId || result.data?.fileId, 
+        source: targetService.value 
+      })
+
       emit('success')
       isSaving.value = false
       close()
@@ -284,6 +293,16 @@ const handleLoad = async (fileId, source) => {
       
       if (isSuccess) {
         success('已从云端恢复工作区！')
+
+        // 记录到 Cookie
+        const currentWs = workspaces.value.find(w => w.fileId === fileId)
+        saveLastWorkspace({ 
+          type: 'cloud', 
+          name: currentWs?.metadata?.name || '未命名云端工作区', 
+          fileId, 
+          source 
+        })
+
         emit('success')
         close()
       } else {

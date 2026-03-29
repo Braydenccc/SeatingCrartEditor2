@@ -10,8 +10,7 @@ const webdavConfig = ref(null)
 const backupMode = ref(false)
 
 
-// Cookie helper functions
-const setCookie = (name, value, days) => {
+export const setCookie = (name, value, days) => {
     let expires = ""
     if (days) {
         const date = new Date()
@@ -22,7 +21,7 @@ const setCookie = (name, value, days) => {
     document.cookie = name + "=" + encodeURIComponent(value) + expires + "; path=/; SameSite=Strict" + secure
 }
 
-const getCookie = (name) => {
+export const getCookie = (name) => {
     const nameEQ = name + "="
     const ca = document.cookie.split(';')
     for (let i = 0; i < ca.length; i++) {
@@ -33,7 +32,7 @@ const getCookie = (name) => {
     return null
 }
 
-const eraseCookie = (name) => {
+export const eraseCookie = (name) => {
     const secure = location.protocol === 'https:' ? '; Secure' : ''
     document.cookie = name + '=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Strict' + secure
 }
