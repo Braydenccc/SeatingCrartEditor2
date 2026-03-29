@@ -1,32 +1,37 @@
 <template>
   <div class="rule-list">
     <!-- 过滤工具栏 -->
-    <div class="filter-bar">
-      <div class="filter-tabs">
-        <button
-          v-for="tab in priorityTabs"
-          :key="tab.key"
-          class="filter-tab"
-          :class="{ active: filterPriority === tab.key }"
-          @click="filterPriority = tab.key"
-        >
-          <span v-if="tab.key !== 'all'" class="dot" :style="{ background: PRIORITY_COLORS[tab.key] }"></span>
-          {{ tab.label }}
-          <span class="badge">{{ tabCounts[tab.key] }}</span>
-        </button>
+    <!-- 搜索与筛选工具栏 -->
+    <div class="rule-toolbar">
+      <div class="search-box">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input v-model="searchQuery" type="text" placeholder="搜索规则、学生、备注..." />
+        <button v-if="searchQuery" class="clear-search" @click="searchQuery = ''">×</button>
       </div>
-      <div class="filter-actions">
-        <button class="btn-ghost btn-sm" @click="emit('export')" title="导出规则 JSON">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          导出
-        </button>
-        <button class="btn-ghost btn-sm" @click="emit('import')" title="导入规则 JSON">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          导入
-        </button>
-        <button v-if="rules.length > 0" class="btn-ghost btn-sm danger" @click="handleClearAll">
-          清空
-        </button>
+
+      <div class="filter-row">
+        <div class="filter-tabs">
+          <button
+            v-for="tab in priorityTabs"
+            :key="tab.key"
+            class="filter-tab"
+            :class="{ active: filterPriority === tab.key }"
+            @click="filterPriority = tab.key"
+          >
+            {{ tab.label }}
+          </button>
+        </div>
+        <div class="toolbar-actions">
+          <button class="action-btn" @click="emit('export')" title="导出规则">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </button>
+          <button class="action-btn" @click="emit('import')" title="导入规则">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </button>
+          <button v-if="rules.length > 0" class="action-btn danger" @click="handleClearAll" title="清空全部">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          </button>
+        </div>
       </div>
     </div>
 
@@ -75,7 +80,6 @@
           </div>
 
           <div class="rule-text">
-            <span class="rule-icon">{{ PRIORITY_ICONS[rule.priority] }}</span>
             <span class="rule-label">{{ renderRuleText(rule) }}</span>
           </div>
 
@@ -147,6 +151,7 @@ const emit = defineEmits(['export', 'import'])
 const { rules, renderRuleText, toggleRule, deleteRule, clearAllRules, detectConflicts } = useSeatRules()
 const { requestConfirm, isConfirming } = useConfirmAction()
 
+const searchQuery = ref('')
 const filterPriority = ref('all')
 const expandedId = ref(null)
 const showConflicts = ref(false)
@@ -154,7 +159,7 @@ const showConflicts = ref(false)
 const priorityTabs = [
   { key: 'all', label: '全部' },
   { key: 'required', label: '必须' },
-  { key: 'prefer', label: '尽量' },
+  { key: 'prefer', label: '建议' },
   { key: 'optional', label: '可选' }
 ]
 
@@ -168,8 +173,19 @@ const tabCounts = computed(() => ({
 }))
 
 const filteredRules = computed(() => {
-  if (filterPriority.value === 'all') return rules.value
-  return rules.value.filter(r => r.priority === filterPriority.value)
+  let list = rules.value
+  if (filterPriority.value !== 'all') {
+    list = list.filter(r => r.priority === filterPriority.value)
+  }
+  if (searchQuery.value.trim()) {
+    const q = searchQuery.value.toLowerCase()
+    list = list.filter(r => {
+      const text = renderRuleText(r).toLowerCase()
+      const desc = (r.description || '').toLowerCase()
+      return text.includes(q) || desc.includes(q)
+    })
+  }
+  return list
 })
 
 const toggleExpand = (id) => {
@@ -222,78 +238,125 @@ const formatParamValue = (predicate, key, value) => {
   gap: 8px;
 }
 
-/* ==================== 过滤栏 ==================== */
-.filter-bar {
+/* ==================== 顶部工具栏 ==================== */
+.rule-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 8px;
+  background: #f8fafc;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid #eef2f6;
+}
+
+.search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-box svg {
+  position: absolute;
+  left: 12px;
+}
+
+.search-box input {
+  width: 100%;
+  padding: 10px 36px;
+  background: white;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 13px;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.search-box input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(35, 88, 123, 0.1);
+}
+
+.clear-search {
+  position: absolute;
+  right: 8px;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: #e2e8f0;
+  color: #64748b;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.filter-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  flex-wrap: wrap;
+  gap: 12px;
 }
 
 .filter-tabs {
   display: flex;
-  gap: 4px;
+  background: #f1f5f9;
+  padding: 3px;
+  border-radius: 10px;
+  gap: 2px;
 }
 
 .filter-tab {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 5px 10px;
-  border: 1.5px solid #e2e8f0;
-  border-radius: 20px;
-  background: white;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   color: #64748b;
   cursor: pointer;
   transition: all 0.2s;
 }
 
-.filter-tab:hover { border-color: #94a3b8; color: #334155; }
-.filter-tab.active { background: #23587b; border-color: #23587b; color: white; }
-
-.filter-tab .dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.badge {
-  background: rgba(0,0,0,0.1);
-  border-radius: 10px;
-  padding: 0 5px;
-  font-size: 11px;
-  min-width: 18px;
-  text-align: center;
-}
-
-.filter-tab.active .badge { background: rgba(255,255,255,0.25); }
-
-.filter-actions {
-  display: flex;
-  gap: 4px;
-}
-
-.btn-ghost {
-  padding: 5px 10px;
-  border: 1.5px solid #e2e8f0;
-  border-radius: 6px;
+.filter-tab:hover { color: #1e293b; }
+.filter-tab.active {
   background: white;
-  font-size: 12px;
-  color: #64748b;
-  cursor: pointer;
+  color: var(--color-primary);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+
+.toolbar-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.action-btn {
+  width: 34px;
+  height: 34px;
   display: flex;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
+  background: white;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  color: #64748b;
+  cursor: pointer;
   transition: all 0.2s;
 }
 
-.btn-ghost:hover { border-color: #94a3b8; color: #334155; }
-.btn-ghost.danger:hover { border-color: #ef4444; color: #ef4444; background: #fef2f2; }
-.btn-sm { padding: 4px 8px; font-size: 11px; }
+.action-btn:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #1e293b;
+}
+
+.action-btn.danger:hover {
+  border-color: #fca5a5;
+  color: #ef4444;
+  background: #fef2f2;
+}
 
 /* ==================== 冲突警告 ==================== */
 .conflict-banner {
@@ -357,7 +420,7 @@ const formatParamValue = (predicate, key, value) => {
   align-items: center;
   gap: 10px;
   padding: 32px 0;
-  color: #94a3b8;
+  color: #64748b; /* Darkened for readability */
 }
 
 .empty-state p { margin: 0; font-size: 13px; }
@@ -370,19 +433,31 @@ const formatParamValue = (predicate, key, value) => {
 }
 
 .rule-item {
-  border-radius: 10px;
-  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  border: 1px solid #eef2f6;
   background: white;
   overflow: hidden;
-  transition: box-shadow 0.2s, border-color 0.2s;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
 }
 
-.rule-item:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-.rule-item.disabled { opacity: 0.55; }
-.rule-item.required { border-left: 3px solid #ef4444; }
-.rule-item.prefer { border-left: 3px solid #f59e0b; }
-.rule-item.optional { border-left: 3px solid #94a3b8; }
-.rule-item.expanded { border-color: #93c5fd; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1); }
+.rule-item:hover { 
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05); 
+  transform: translateY(-1px);
+}
+
+.rule-item.disabled { opacity: 0.5; filter: grayscale(0.5); }
+
+.rule-item.required { border-left: 4px solid #ef4444; }
+.rule-item.prefer { border-left: 4px solid #f59e0b; }
+.rule-item.optional { border-left: 4px solid #94a3b8; }
+
+.rule-item.expanded { 
+  border-color: var(--color-primary); 
+  box-shadow: 0 8px 24px rgba(35, 88, 123, 0.12);
+  transform: translateY(-2px);
+}
 
 .rule-main {
   display: flex;
@@ -444,7 +519,7 @@ const formatParamValue = (predicate, key, value) => {
   gap: 6px;
 }
 
-.rule-icon { font-size: 14px; flex-shrink: 0; }
+
 .rule-label {
   font-size: 13px;
   color: #334155;
@@ -481,7 +556,7 @@ const formatParamValue = (predicate, key, value) => {
 .detail-key {
   display: block;
   font-size: 10px;
-  color: #94a3b8;
+  color: #64748b; /* Darkened for readability */
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -503,7 +578,7 @@ const formatParamValue = (predicate, key, value) => {
 }
 .priority-chip.required { background: #fee2e2; color: #dc2626; }
 .priority-chip.prefer { background: #fef9c3; color: #b45309; }
-.priority-chip.optional { background: #f1f5f9; color: #64748b; }
+.priority-chip.optional { background: #f1f5f9; color: #475569; } /* Darkened for readability */
 
 .detail-actions { display: flex; justify-content: flex-end; }
 

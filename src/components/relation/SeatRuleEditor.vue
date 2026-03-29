@@ -15,7 +15,8 @@
           :class="{ active: activeTab === tab.key }"
           @click="activeTab = tab.key"
         >
-          {{ tab.icon }} {{ tab.label }}
+          <span class="tab-icon">{{ tab.icon }}</span>
+          <span class="tab-label">{{ tab.label }}</span>
           <span v-if="tab.badge" class="tab-badge">{{ tab.badge }}</span>
         </button>
       </div>
@@ -131,55 +132,80 @@ const close = () => {
 }
 
 .modal-container {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  width: 90%;
-  max-width: 800px;
-  max-height: 88vh;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 16px;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  width: 95%;
+  max-width: 900px;
+  max-height: 90vh;
   display: flex;
   flex-direction: column;
+  animation: modal-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes modal-pop {
+  0% { transform: scale(0.95); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
 }
 
 /* ==================== Tab 导航 ==================== */
 .tab-bar {
   display: flex;
-  gap: 0;
-  border-bottom: 2px solid #e0e0e0;
-  background: #f8fafc;
+  gap: 12px;
+  border-bottom: 1px solid #eef2f6;
+  background: rgba(248, 250, 252, 0.5);
+  padding: 0 24px;
   flex-shrink: 0;
 }
 
 .tab-btn {
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 12px 18px;
+  gap: 8px;
+  padding: 14px 0;
   border: none;
   background: transparent;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
-  color: #64748b;
+  color: #475569; /* Darkened for readability */
   cursor: pointer;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -2px;
+  position: relative;
   transition: all 0.2s;
   white-space: nowrap;
 }
 
-.tab-btn:hover { color: #334155; background: rgba(0,0,0,0.03); }
-.tab-btn.active { color: #23587b; border-bottom-color: #23587b; font-weight: 600; }
+.tab-btn::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--color-primary);
+  border-radius: 3px 3px 0 0;
+  transform: scaleX(0);
+  transition: transform 0.2s;
+}
+
+.tab-btn:hover { color: #334155; }
+.tab-btn.active { color: var(--color-primary); font-weight: 600; }
+.tab-btn.active::after { transform: scaleX(1); }
 
 .tab-badge {
-  background: #23587b;
+  background: var(--color-primary);
   color: white;
   border-radius: 10px;
-  padding: 1px 6px;
+  padding: 1px 7px;
   font-size: 11px;
   font-weight: 700;
   min-width: 16px;
   text-align: center;
+  box-shadow: 0 2px 4px rgba(35, 88, 123, 0.2);
 }
+
+.tab-icon { font-size: 16px; }
 
 /* ==================== Tab 内容 ==================== */
 .tab-content {
@@ -215,7 +241,7 @@ const close = () => {
 .tip-desc {
   margin: 0;
   font-size: 13px;
-  color: #64748b;
+  color: #475569; /* Darkened for readability */
   line-height: 1.6;
 }
 
@@ -230,9 +256,10 @@ const close = () => {
 
 .modal-header h3 {
   margin: 0;
-  font-size: 20px;
-  font-weight: 600;
-  color: #23587b;
+  font-size: 18px;
+  font-weight: 700;
+  color: #1e293b;
+  letter-spacing: -0.01em;
 }
 
 .close-btn {

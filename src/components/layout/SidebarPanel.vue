@@ -237,30 +237,79 @@
             <h3>智能排位</h3>
           </div>
 
-          <!-- 选区列表 -->
-          <ZoneList />
+          <!-- 排位核心面板 -->
+          <div class="assign-main-card">
+            <!-- 选区管理 -->
+            <div class="assign-card-section">
+              <ZoneList />
+            </div>
 
-          <!-- 规则快捷管理 -->
-          <div class="options-group assign-rule-group">
-            <button class="option-button rule-shortcut-btn" @click="showRuleEditor = true">
-              <span class="rule-shortcut-icon">📋</span>
-              <span class="rule-shortcut-text">规则管理</span>
-              <span v-if="ruleCount > 0" class="rule-badge">{{ ruleCount }}</span>
-            </button>
+            <!-- 参数设置 -->
+            <div class="assign-card-section assignment-settings">
+
+
+              <div class="input-group inline-row no-margin-top">
+                <label for="maxIterations">退火强度 (迭代次数):</label>
+                <div class="input-with-value">
+                  <input id="maxIterations" v-model.number="assignConfig.maxIterations" 
+                    type="range" min="10000" max="1000000" step="10000" />
+                  <span class="iteration-badge">{{ (assignConfig.maxIterations / 10000).toFixed(0) }}w</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 操作按钮 -->
+            <div class="assign-actions-grid">
+              <button class="option-button rule-shortcut-btn" @click="showRuleEditor = true">
+                <span class="rule-shortcut-icon">📋</span>
+                <span class="rule-shortcut-text">规则管理</span>
+                <span v-if="ruleCount > 0" class="rule-badge">{{ ruleCount }}</span>
+              </button>
+              <button id="applyAssign" class="option-button primary main-assign-btn" 
+                :disabled="isAssigning" @click="handleRunAssignment">
+                <span>{{ isAssigning ? '执行中...' : '🚀 开始排位' }}</span>
+              </button>
+            </div>
           </div>
 
-          <!-- 进度条 -->
-          <div v-if="isAssigning" class="assign-progress-wrap">
-            <div class="assign-progress-bar" :style="{ width: assignmentProgress + '%' }"></div>
-            <span class="assign-progress-text">{{ assignmentProgress }}%</span>
-          </div>
+          <!-- 进度条及详细详情 -->
+          <div v-if="isAssigning || lastAssignmentReport" class="assign-progress-section">
+            <div class="assign-progress-wrap">
+              <div class="assign-progress-bar" :style="{ width: assignmentProgress + '%' }"></div>
+            </div>
+            
+            <div class="assign-stats-compact">
+              <div class="stat-tag">
+                <span class="stat-label">进度</span>
+                <span class="stat-value">{{ assignmentProgress }}%</span>
+              </div>
 
+              <template v-if="assignmentIterationInfo.algorithm === 'SA'">
+                <div class="stat-tag">
+                  <span class="stat-label">得分</span>
+                  <span class="stat-value" :class="{ 'score-perfect': assignmentIterationInfo.bestScore === 0 }">{{ assignmentIterationInfo.bestScore }}</span>
+                </div>
+                <div class="stat-tag">
+                  <span class="stat-label">迭代</span>
+                  <span class="stat-value">{{ (assignmentIterationInfo.i / 10000).toFixed(0) }}w</span>
+                </div>
+                <div v-if="assignmentIterationInfo.reheatCount > 0" class="stat-tag">
+                  <span class="stat-label">重温</span>
+                  <span class="stat-value">{{ assignmentIterationInfo.reheatCount }}</span>
+                </div>
+              </template>
 
-
-          <div class="options-group">
-            <button id="applyAssign" class="option-button primary" :disabled="isAssigning" @click="handleRunAssignment">
-              <span>{{ isAssigning ? '排位中...' : '🚀 智能排位' }}</span>
-            </button>
+              <template v-if="assignmentIterationInfo.algorithm === 'EXHAUSTIVE'">
+                <div class="stat-tag">
+                  <span class="stat-label">搜点</span>
+                  <span class="stat-value">{{ (assignmentIterationInfo.nodesSearched / 10000).toFixed(0) }}w</span>
+                </div>
+                <div class="stat-tag">
+                  <span class="stat-label">得分</span>
+                  <span class="stat-value">{{ assignmentIterationInfo.bestScore }}</span>
+                </div>
+              </template>
+            </div>
           </div>
 
           <!-- 排位报告内联显示 -->
@@ -362,7 +411,7 @@ import { useAuth } from '@/composables/useAuth'
 const { activeTab, mobileMenuOpen, setActiveTab, closeMobileMenu } = useSidebar()
 const { seatConfig, updateConfig, clearAllSeats, seats, shiftSeats } = useSeatChart()
 const { currentMode, setMode, toggleEmptyEditMode, EditMode } = useEditMode()
-const { isAssigning, assignmentProgress, runSmartAssignment } = useAssignment()
+const { isAssigning, assignmentProgress, assignmentIterationInfo, runSmartAssignment } = useAssignment()
 const { tags, addTag, clearAllTags } = useTagData()
 const { students, addStudent, updateStudent, clearAllStudents } = useStudentData()
 const { exportSettings } = useExportSettings()
@@ -460,6 +509,15 @@ const configForm = ref({
   shiftColShift: 0,
   shiftDirection: -1,
 })
+
+// 排位配置
+const assignConfig = ref({
+  maxIterations: 500000,
+  algorithm: 'SA'
+})
+
+
+
 
 // 规则编辑器显示状态
 const showRuleEditor = ref(false)
@@ -790,17 +848,26 @@ const toggleClearMode = () => {
 const handleRunAssignment = async () => {
   if (isAssigning.value) return
 
-  const result = await runSmartAssignment({
-    useRules: true
-  })
+  lastAssignmentReport.value = null
+  const startTime = Date.now()
 
-  if (result.success) {
-    success(result.message)
-    // 存储审计报告
-    lastAssignmentReport.value = result.report ?? null
-    lastAssignmentDuration.value = result.duration ?? 0
-  } else {
-    error(result.message)
+  try {
+    const result = await runSmartAssignment({
+      useRules: true,
+      iterations: assignConfig.value.maxIterations
+    })
+
+    if (result.success) {
+      if (result.message) success(result.message)
+      // 存储审计报告
+      lastAssignmentReport.value = result.report ?? null
+      lastAssignmentDuration.value = result.duration ?? (Date.now() - startTime)
+    } else {
+      error(result.message)
+    }
+  } catch (err) {
+    error('排位执行过程中出错')
+    console.error(err)
   }
 }
 
@@ -1029,7 +1096,7 @@ const formatLogTime = (timestamp) => {
   display: none;
   flex-direction: column;
   padding: 20px;
-  height: 100%;
+  /* height: 100%;  <-- 移除此项，允许子元素自然滚动 */
 }
 
 .option-content.active {
@@ -1485,10 +1552,9 @@ const formatLogTime = (timestamp) => {
   background: #fffbf0;
 }
 
-.log-error {
-  border-left-color: #FF6B6B;
-  background: #fff5f5;
-}
+
+
+
 
 .log-empty {
   text-align: center;
@@ -2311,84 +2377,205 @@ const formatLogTime = (timestamp) => {
 }
 
 /* ==================== 智能排位快捷区 ==================== */
-.assign-rule-group {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
+/* ==================== 智能排位优化布局 ==================== */
+.assign-main-card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  /* 确保在粘性定位时与背景融合 */
+  margin-top: -4px; /* 抵消一部分顶部间距，更贴合 */
 }
 
+/* 粘性时的阴影增强 */
+.assign-main-card {
+  transition: box-shadow 0.3s;
+}
+
+
+.assign-card-section {
+  padding: 10px;
+  border-bottom: 1px dashed #e2e8f0;
+}
+
+/* 算法选择器 */
+.algorithm-picker {
+  margin-bottom: 12px;
+}
+
+.section-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 10px;
+}
+
+
+
+.divider-line {
+  height: 1px;
+  background: #f1f5f9;
+  margin: 10px 0;
+}
+
+.no-margin-top {
+  margin-top: 0 !important;
+}
+
+
+.assignment-settings {
+  background: #fff;
+}
+
+.assign-actions-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  padding: 12px;
+  gap: 10px;
+  background: #fff;
+}
+
+.main-assign-btn {
+  height: 40px !important;
+  font-weight: 700 !important;
+  box-shadow: 0 4px 10px rgba(35, 88, 123, 0.12);
+}
+
+/* 规则快捷项修改 */
 .rule-shortcut-btn {
+  height: 40px;
+  border: 1.5px solid #e2e8f0;
+  background: #f8fafc;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 10px 8px;
-  border: 1.5px solid #e2e8f0;
   border-radius: 8px;
-  background: white;
-  color: #334155;
-  font-size: 13px;
-  font-weight: 500;
+  padding: 0 10px;
   cursor: pointer;
   transition: all 0.2s;
-  position: relative;
 }
 
 .rule-shortcut-btn:hover {
-  border-color: #23587b;
-  background: #eff6ff;
-  color: #23587b;
+  background: #fff;
+  border-color: var(--color-primary);
+  color: var(--color-primary);
 }
 
-.rule-shortcut-icon {
-  font-size: 15px;
-  flex-shrink: 0;
+/* 复位进度条样式 (无渐变) */
+.assign-progress-section {
+  margin-top: 4px;
+  background: #f8fafc;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
 }
 
-.rule-shortcut-text {
-  flex: 1;
-  text-align: center;
-}
-
-.rule-badge {
-  background: #23587b;
-  color: white;
-  font-size: 10px;
-  font-weight: 700;
-  padding: 1px 5px;
-  border-radius: 9px;
-  min-width: 16px;
-  text-align: center;
-  flex-shrink: 0;
-}
-
-/* ==================== 进度条 ==================== */
 .assign-progress-wrap {
-  position: relative;
-  height: 24px;
+  width: 100%;
+  height: 6px;
   background: #e2e8f0;
-  border-radius: 12px;
+  border-radius: 3px;
   overflow: hidden;
-  margin: 4px 0;
+  margin-bottom: 8px;
 }
 
 .assign-progress-bar {
   height: 100%;
-  background: linear-gradient(90deg, #23587b, #3b82f6);
-  border-radius: 12px;
+  background-color: var(--color-primary) !important;
   transition: width 0.3s ease;
 }
 
-.assign-progress-text {
-  position: absolute;
-  inset: 0;
+.assign-stats-compact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+
+.stat-tag {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  background: white;
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid #edf2f7;
+}
+
+.stat-label {
+  font-size: 10px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.stat-value {
+  font-size: 12px;
+  font-weight: 700;
+  color: #334155;
+  font-family: 'JetBrains Mono', 'Roboto Mono', monospace;
+}
+
+.score-perfect {
+  color: #16a34a;
+}
+
+/* 滑块相关控制逻辑补充 */
+.input-with-value {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 10px;
+  flex: 1;
+}
+
+.input-with-value input[type="range"] {
+  flex: 1;
+  height: 5px;
+  appearance: none;
+  -webkit-appearance: none;
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+.input-with-value input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 16px;
+  width: 16px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  cursor: pointer;
+  box-shadow: 0 0 2px rgba(0,0,0,0.2);
+}
+
+.iteration-badge {
   font-size: 11px;
   font-weight: 700;
-  color: white;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  color: var(--color-primary);
+  background: rgba(35, 88, 123, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+  min-width: 32px;
+  text-align: center;
+}
+
+.inline-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.inline-row label {
+  font-size: 12px;
+  color: #475569;
+  font-weight: 500;
 }
 
 /* ==================== 上次满足度 ==================== */

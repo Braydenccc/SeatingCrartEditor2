@@ -3,6 +3,7 @@ import { useTagData } from './useTagData'
 import { useSeatChart } from './useSeatChart'
 import { useExportSettings } from './useExportSettings'
 import { useZoneData } from './useZoneData'
+import { useSeatRules } from './useSeatRules'
 import { useLogger } from './useLogger'
 
 const FILE_EXT = '.sce'
@@ -14,6 +15,7 @@ export function useWorkspace() {
   const { seatConfig, seats, updateConfig, clearAllSeats } = useSeatChart()
   const { exportSettings } = useExportSettings()
   const { zones, clearAllZones, addZone, updateZone } = useZoneData()
+  const { rules, clearAllRules, addRule } = useSeatRules()
   const { success, error } = useLogger()
 
   // 生成工作区 JSON 数据 (用于云端或本地保存)
@@ -54,7 +56,15 @@ export function useWorkspace() {
           seatIds: [...z.seatIds],
           visible: z.visible
         })),
-        exportSettings: { ...exportSettings.value }
+        exportSettings: { ...exportSettings.value },
+        rules: (rules.value || []).map(r => ({
+          enabled: r.enabled,
+          priority: r.priority,
+          subject: { ...r.subject },
+          predicate: r.predicate,
+          params: { ...r.params },
+          description: r.description
+        }))
       }
       return JSON.stringify(workspace, null, 2)
     } catch (e) {
@@ -198,12 +208,13 @@ export function useWorkspace() {
         // 如有需要，用户应使用最新的 SeatRules (座位规则) 机制进行配置。
 
         // 恢复选区数据
+        const oldZoneIdToNewId = {}
         if (workspace.zones && Array.isArray(workspace.zones)) {
           clearAllZones()
 
           workspace.zones.forEach(z => {
             const newZone = addZone()
-            const mappedTagIds = z.tagIds
+            const mappedTagIds = (z.tagIds || [])
               .map(tid => oldTagIdToNewId[tid])
               .filter(id => id !== undefined)
             updateZone(newZone.id, {
@@ -212,6 +223,52 @@ export function useWorkspace() {
               seatIds: [...z.seatIds],
               visible: z.visible !== undefined ? z.visible : false
             })
+            oldZoneIdToNewId[z.id] = newZone.id
+          })
+        }
+
+        // 恢复智能排位规则
+        if (workspace.rules && Array.isArray(workspace.rules)) {
+          clearAllRules()
+
+          workspace.rules.forEach(r => {
+            // ID 重映射
+            const newSubject = { ...r.subject }
+            if (newSubject.kind === 'student') {
+              newSubject.id = oldStudentIdToNewId[newSubject.id]
+            } else if (newSubject.kind === 'pair') {
+              newSubject.id1 = oldStudentIdToNewId[newSubject.id1]
+              newSubject.id2 = oldStudentIdToNewId[newSubject.id2]
+            } else if (newSubject.kind === 'tag') {
+              newSubject.tagId = oldTagIdToNewId[newSubject.tagId]
+            } else if (newSubject.kind === 'tag_pair') {
+              newSubject.tagId1 = oldTagIdToNewId[newSubject.tagId1]
+              newSubject.tagId2 = oldTagIdToNewId[newSubject.tagId2]
+            }
+
+            const newParams = { ...r.params }
+            if (newParams.tagId) newParams.tagId = oldTagIdToNewId[newParams.tagId]
+            if (newParams.zoneId) newParams.zoneId = oldZoneIdToNewId[newParams.zoneId]
+
+            // 只有主体 ID 都映射成功才添加
+            const subjectValid = (kind) => {
+              if (kind === 'student') return !!newSubject.id
+              if (kind === 'pair') return !!newSubject.id1 && !!newSubject.id2
+              if (kind === 'tag') return !!newSubject.tagId
+              if (kind === 'tag_pair') return !!newSubject.tagId1 && !!newSubject.tagId2
+              return true
+            }
+
+            if (subjectValid(newSubject.kind)) {
+              addRule({
+                enabled: r.enabled ?? true,
+                priority: r.priority,
+                subject: newSubject,
+                predicate: r.predicate,
+                params: newParams,
+                description: r.description || ''
+              })
+            }
           })
         }
 

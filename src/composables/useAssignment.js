@@ -39,6 +39,14 @@ export function useAssignment() {
 
   const isAssigning = ref(false)
   const assignmentProgress = ref(0) // 0~100
+  const assignmentIterationInfo = ref({
+    i: 0,
+    iterations: 0,
+    score: 0,
+    bestScore: 0,
+    reheatCount: 0,
+    algorithm: 'SA'
+  })
 
   // ==================== 随机工具 ====================
 
@@ -408,11 +416,12 @@ export function useAssignment() {
    * @param {Array} studentList - 学生列表
    * @param {object} config - 配置参数
    */
-  const runAnnealingLoop = (initialAssignment, activeRules, studentList, config = {}) => {
+  const runAnnealingLoop = async (initialAssignment, activeRules, studentList, config = {}) => {
     const {
-      iterations = 15000,
+      iterations = 50000,
       tStart = 1000,
       tEnd = 0.01,
+      availableSeats = [],
       onProgress = null
     } = config
 
@@ -420,6 +429,10 @@ export function useAssignment() {
     let currentScore = evaluateScore(current, activeRules, studentList)
     let best = new Map(current)
     let bestScore = currentScore
+
+    if (bestScore === 0) {
+      return { solution: best, score: bestScore, reheatCount: 0 }
+    }
 
     // 构建 seat -> student 反向映射（加速交换操作）
     const buildReverse = (assignment) => {
@@ -434,7 +447,18 @@ export function useAssignment() {
     const assignedStudentIds = [...current.keys()]
     const n = assignedStudentIds.length
 
+    // 计算初始的空座位
+    let emptySeats = availableSeats
+      .map(s => s.id)
+      .filter(id => !currentReverse.has(id))
+
     const cooling = Math.pow(tEnd / tStart, 1 / iterations)
+    let stagnationCounter = 0
+    let stagnationSinceBest = 0
+    let reheatCount = 0
+    const maxReheats = 20
+    // 灵敏的停滞阈值：针对总迭代次数进行动态计算
+    const baseReheatThreshold = Math.max(800, Math.floor(iterations * 0.05))
 
     // 预先计算哪些学生当前违规（用于偏向选择）
     const computeViolatingStudents = (assignment) => {
@@ -457,63 +481,219 @@ export function useAssignment() {
 
     let violatingStudents = computeViolatingStudents(current)
     let T = tStart
+    
+    // 建立同桌映射（加速“成对移动”变异）
+    const partnerMap = new Map()
+    activeRules.forEach(r => {
+      if (r.priority === RulePriority.REQUIRED && r.predicate === 'MUST_BE_SEATMATES') {
+        const subjects = expandSubject(r.subject, studentList)
+        subjects.forEach(s => {
+          if (s.type === 'pair') {
+            partnerMap.set(s.studentId1, s.studentId2)
+            partnerMap.set(s.studentId2, s.studentId1)
+          }
+        })
+      }
+    })
 
     for (let i = 0; i < iterations; i++) {
       T *= cooling
 
-      // 偏向选择违规学生
+      // 重加热（Reheating）机制：长时间找不到更好解
+      if (stagnationCounter > baseReheatThreshold && reheatCount < 20) {
+        reheatCount++
+        
+        // 两级重加热策略
+        const isTier2 = stagnationSinceBest > baseReheatThreshold * 4
+        
+        if (isTier2) {
+          // 二级重加热：Global Shakeup 大地震
+          const intensity = 0.8 * Math.pow(0.8, reheatCount / 2)
+          T = tStart * intensity
+          
+          // 对 15% 的学生进行大乱排
+          const shuffleCount = Math.max(2, Math.floor(n * 0.15))
+          for (let p = 0; p < shuffleCount; p++) {
+            const s1 = assignedStudentIds[Math.floor(Math.random() * n)]
+            const s2 = assignedStudentIds[Math.floor(Math.random() * n)]
+            if (s1 === s2) continue
+            const seat1 = current.get(s1)
+            const seat2 = current.get(s2)
+            current.set(s1, seat2)
+            current.set(s2, seat1)
+            currentReverse.set(seat1, s2)
+            currentReverse.set(seat2, s1)
+          }
+          stagnationSinceBest = 0
+        } else {
+          // 一级重加热：Soft Jitter 微调
+          const intensity = 0.5 * Math.pow(0.7, reheatCount - 1)
+          T = tStart * intensity
+          
+          // 回退并添加微量扰动 (5%)
+          current = new Map(best)
+          currentReverse = buildReverse(current)
+          const pStrength = Math.max(1, Math.floor(n * 0.05))
+          for (let p = 0; p < pStrength; p++) {
+            const s1 = assignedStudentIds[Math.floor(Math.random() * n)]
+            const s2 = assignedStudentIds[Math.floor(Math.random() * n)]
+            if (s1 === s2) continue
+            const seat1 = current.get(s1)
+            const seat2 = current.get(s2)
+            current.set(s1, seat2)
+            current.set(s2, seat1)
+            currentReverse.set(seat1, s2)
+            currentReverse.set(seat2, s1)
+          }
+        }
+        
+        stagnationCounter = 0
+        currentScore = evaluateScore(current, activeRules, studentList)
+        emptySeats = availableSeats.map(s => s.id).filter(id => !currentReverse.has(id))
+        violatingStudents = computeViolatingStudents(current)
+      }
+
+      // 动态调整尝试概率
+      const probViolating = 0.7 + Math.min(0.25, stagnationSinceBest / 10000)
+      const probEmpty = 0.2 + (stagnationSinceBest > 5000 ? 0.15 : 0)
+      
+      const useEmptySeat = emptySeats.length > 0 && Math.random() < probEmpty
+      
       let studentA
-      if (violatingStudents.length > 0 && Math.random() < 0.7) {
+      if (violatingStudents.length > 0 && Math.random() < probViolating) {
         studentA = violatingStudents[Math.floor(Math.random() * violatingStudents.length)]
       } else {
         studentA = assignedStudentIds[Math.floor(Math.random() * n)]
       }
 
-      // 随机选交换目标（另一个已分配的学生）
-      const studentB = assignedStudentIds[Math.floor(Math.random() * n)]
-      if (studentA === studentB) continue
-
+      const isPairMove = partnerMap.has(studentA) && Math.random() < 0.3
       const seatA = current.get(studentA)
-      const seatB = current.get(studentB)
 
-      // 执行交换
-      current.set(studentA, seatB)
-      current.set(studentB, seatA)
-      currentReverse.set(seatA, studentB)
-      currentReverse.set(seatB, studentA)
+      if (isPairMove && !useEmptySeat) {
+        const partner = partnerMap.get(studentA)
+        const seatPartner = current.get(partner)
+        
+        // 尝试成对交换
+        const studentC = assignedStudentIds[Math.floor(Math.random() * n)]
+        if (studentC === studentA || studentC === partner) { stagnationCounter++; continue; }
+        const seatC = current.get(studentC)
+        const adjC = getAdjacentSeats(seatC)
+        const seatDId = adjC.length > 0 ? adjC[Math.floor(Math.random() * adjC.length)].id : assignedStudentIds[Math.floor(Math.random() * n)]
+        const studentD = currentReverse.get(seatDId)
+        
+        if (studentD && studentD !== studentA && studentD !== partner && studentD !== studentC) {
+          const seatD = current.get(studentD)
+          // 交换 (A,Partner) 和 (C,D)
+          current.set(studentA, seatC); current.set(partner, seatD)
+          current.set(studentC, seatA); current.set(studentD, seatPartner)
+          currentReverse.set(seatC, studentA); currentReverse.set(seatD, partner)
+          currentReverse.set(seatA, studentC); currentReverse.set(seatPartner, studentD)
+          
+          const newScore = evaluateScore(current, activeRules, studentList)
+          const delta = newScore - currentScore
+          if (delta >= 0 || Math.random() < Math.exp(delta / T)) {
+            currentScore = newScore
+            if (currentScore > bestScore) {
+              bestScore = currentScore; best = new Map(current); stagnationCounter = 0
+              if (bestScore === 0) break
+            }
+          } else {
+            // 撤销
+            current.set(studentA, seatA); current.set(partner, seatPartner)
+            current.set(studentC, seatC); current.set(studentD, seatD)
+            currentReverse.set(seatA, studentA); currentReverse.set(seatPartner, partner)
+            currentReverse.set(seatC, studentC); currentReverse.set(seatD, studentD)
+            stagnationCounter++
+          }
+          continue
+        }
+      }
+
+      // 常规单人移动
+      let seatB
+      let studentB
+      let emptySeatIdx = -1
+
+      if (useEmptySeat) {
+        emptySeatIdx = Math.floor(Math.random() * emptySeats.length)
+        seatB = emptySeats[emptySeatIdx]
+        current.set(studentA, seatB)
+        currentReverse.delete(seatA)
+        currentReverse.set(seatB, studentA)
+      } else {
+        studentB = assignedStudentIds[Math.floor(Math.random() * n)]
+        if (studentA === studentB) {
+          stagnationCounter++
+          continue
+        }
+        seatB = current.get(studentB)
+        current.set(studentA, seatB)
+        current.set(studentB, seatA)
+        currentReverse.set(seatA, studentB)
+        currentReverse.set(seatB, studentA)
+      }
 
       const newScore = evaluateScore(current, activeRules, studentList)
       const delta = newScore - currentScore
 
       if (delta >= 0 || Math.random() < Math.exp(delta / T)) {
-        // 接受新解
         currentScore = newScore
+        if (useEmptySeat) {
+          emptySeats[emptySeatIdx] = seatA
+        }
+
         if (currentScore > bestScore) {
           bestScore = currentScore
           best = new Map(current)
-          // 更新违规列表（每 500 步更新一次，减少开销）
-          if (i % 500 === 0) {
-            violatingStudents = computeViolatingStudents(current)
+          stagnationCounter = 0
+          stagnationSinceBest = 0 // 重置全局停滞
+          if (bestScore === 0) {
+            if (onProgress) onProgress(100)
+            break
           }
+        } else {
+          stagnationCounter++
+          stagnationSinceBest++
+        }
+
+        if (i % 500 === 0) {
+          violatingStudents = computeViolatingStudents(current)
         }
       } else {
-        // 回滚
-        current.set(studentA, seatA)
-        current.set(studentB, seatB)
-        currentReverse.set(seatA, studentA)
-        currentReverse.set(seatB, studentB)
+        stagnationCounter++
+        if (useEmptySeat) {
+          current.set(studentA, seatA)
+          currentReverse.delete(seatB)
+          currentReverse.set(seatA, studentA)
+        } else {
+          current.set(studentA, seatA)
+          current.set(studentB, seatB)
+          currentReverse.set(seatA, studentA)
+          currentReverse.set(seatB, studentB)
+        }
       }
 
-      // 进度回调
       if (onProgress && i % 1000 === 0) {
-        onProgress(Math.round((i / iterations) * 100))
+        onProgress(Math.round((i / iterations) * 100), {
+          i,
+          iterations,
+          score: currentScore,
+          bestScore,
+          reheatCount
+        })
+        await new Promise(r => setTimeout(r, 0))
       }
     }
 
-    return { solution: best, score: bestScore }
+    return { solution: best, score: bestScore, reheatCount }
   }
 
+  // ==================== 新引擎：穷举 + 剪枝回溯 ====================
+
+
+
   // ==================== 新引擎：生成审计报告 ====================
+
 
   const generateReport = (solution, activeRules, studentList) => {
     const satisfied = []
@@ -557,6 +737,8 @@ export function useAssignment() {
     return { satisfied, violated, satRate }
   }
 
+
+
   // ==================== 主入口：智能排位 ====================
 
   /**
@@ -566,8 +748,10 @@ export function useAssignment() {
   const runSmartAssignment = async (options = {}) => {
     const {
       useRules = true,
-      iterations = 15000,
-      onProgress = null
+      iterations = 100000,
+      onProgress = null,
+      algorithm = 'SA', // SA, LEGACY_GREEDY, EXHAUSTIVE
+      nodeLimit = 2000000
     } = options
 
     if (isAssigning.value) {
@@ -585,38 +769,52 @@ export function useAssignment() {
       const availableSeats = getAvailableSeats()
 
       if (studentList.length === 0) {
+        isAssigning.value = false
         return { success: false, message: '没有学生数据' }
       }
       if (availableSeats.length === 0) {
+        isAssigning.value = false
         return { success: false, message: '没有可用座位' }
       }
 
       // 收集规则
-      let activeRules = []
-      if (useRules) {
-        const { getActiveRules } = useSeatRules()
-        activeRules = [...getActiveRules()]
+      const { getActiveRules } = useSeatRules()
+      const activeRules = useRules ? [...getActiveRules()] : []
+
+      let solution
+      let score = 0
+      let finalReheatCount = 0
+
+      // 默认 SA
+      const initial = generateInitialSolution(studentList, availableSeats, activeRules)
+      assignmentIterationInfo.value = {
+        i: 0,
+        iterations: activeRules.length > 0 ? iterations : 0,
+        score: 0,
+        bestScore: 0,
+        reheatCount: 0,
+        algorithm: 'SA'
       }
 
-      // 生成初始解
-      const initial = generateInitialSolution(studentList, availableSeats, activeRules)
-
-      // 若规则为空，直接用初始解
-      let solution = initial
-      let score = 0
       if (activeRules.length > 0) {
-        const result = runAnnealingLoop(initial, activeRules, studentList, {
+        const result = await runAnnealingLoop(initial, activeRules, studentList, {
           iterations,
-          onProgress: (pct) => {
+          availableSeats,
+          onProgress: (pct, info) => {
             assignmentProgress.value = pct
+            if (info) assignmentIterationInfo.value = info
             if (onProgress) onProgress(pct)
           }
         })
         solution = result.solution
         score = result.score
+        finalReheatCount = result.reheatCount
+      } else {
+        solution = initial
       }
 
-      // 将结果写入座位表
+      // 写入结果
+      clearAllSeats()
       for (const [studentId, seatId] of solution.entries()) {
         assignStudent(seatId, studentId)
       }
@@ -629,12 +827,13 @@ export function useAssignment() {
 
       return {
         success: true,
-        message: `排位完成 · 满足度 ${Math.round(report.satRate * 100)}% · 耗时 ${duration}ms`,
+        message: `排位完成 · 满足度 ${Math.round(report.satRate * 100)}% · 耗时 ${duration}ms${finalReheatCount > 0 ? ` · 重加热 ${finalReheatCount} 次` : ''}`,
         solution,
         score,
         satRate: report.satRate,
         report,
-        duration
+        duration,
+        reheatCount: finalReheatCount
       }
     } catch (error) {
       return {
@@ -650,6 +849,7 @@ export function useAssignment() {
   return {
     isAssigning,
     assignmentProgress,
+    assignmentIterationInfo,
     runSmartAssignment
   }
 }

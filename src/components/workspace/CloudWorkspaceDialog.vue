@@ -1,127 +1,129 @@
 <template>
-  <div v-if="visible" class="cloud-workspace-overlay" @mousedown.self="close">
-    <div class="cloud-workspace-dialog">
-      <div class="dialog-header">
-        <h3>{{ isSaveMode ? '保存工作区至云端' : '从云端加载工作区' }}</h3>
-        <button class="close-btn" @click="close">&times;</button>
-      </div>
-
-      <div class="dialog-body">
-        
-        <!-- Loading State -->
-        <div v-if="isFetching" class="loading-state">
-          <div class="spinner"></div>
-          <p>正在与云端同步...</p>
+  <transition name="dialog-fade">
+    <div v-if="visible" class="cloud-workspace-overlay" @mousedown.self="close">
+      <div class="cloud-workspace-dialog">
+        <div class="dialog-header">
+          <h3>{{ isSaveMode ? '保存工作区至云端' : '从云端加载工作区' }}</h3>
+          <button class="close-btn" @click="close">&times;</button>
         </div>
 
-        <!-- Mode: Save -->
-        <div v-else-if="isSaveMode" class="save-section">
-          <!-- 双云时显示目标选择器 -->
-          <div class="form-group" v-if="hasWebdav && hasRetiehe">
-            <label>保存到</label>
-            <div class="save-target-selection">
-              <label class="radio-label" v-if="hasRetiehe">
-                <input type="radio" value="retiehe" v-model="targetService" />
-                <span>SCE 云服务</span>
-              </label>
-              <label class="radio-label" v-if="hasWebdav">
-                <input type="radio" value="webdav" v-model="targetService" />
-                <span>WebDAV 网盘</span>
-              </label>
+        <div class="dialog-body">
+          
+          <!-- Loading State -->
+          <div v-if="isFetching" class="loading-state">
+            <div class="spinner"></div>
+            <p>正在与云端同步...</p>
+          </div>
+
+          <!-- Mode: Save -->
+          <div v-else-if="isSaveMode" class="save-section">
+            <!-- 双云时显示目标选择器 -->
+            <div class="form-group" v-if="hasWebdav && hasRetiehe">
+              <label>保存到</label>
+              <div class="save-target-selection">
+                <label class="radio-label" v-if="hasRetiehe">
+                  <input type="radio" value="retiehe" v-model="targetService" />
+                  <span>SCE 云服务</span>
+                </label>
+                <label class="radio-label" v-if="hasWebdav">
+                  <input type="radio" value="webdav" v-model="targetService" />
+                  <span>WebDAV 网盘</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- 单云时显示目标提示条 -->
+            <div v-else class="save-target-banner">
+              <span class="banner-icon">{{ hasRetiehe ? '☁️' : '📡' }}</span>
+              <span>保存至：<strong>{{ hasRetiehe ? 'SCE 云服务' : 'WebDAV 网盘' }}</strong></span>
+              <span v-if="backupMode && hasWebdav !== false" class="backup-hint">· 同时备份至 WebDAV ✓</span>
+            </div>
+
+            <div class="form-group">
+              <label>工作区名称</label>
+              <input 
+                type="text" 
+                v-model="workspaceName" 
+                placeholder="例如：2026级二班座位表" 
+                maxlength="50"
+                @keyup.enter="handleSave"
+                autofocus
+              />
+            </div>
+            
+            <div v-if="targetWorkspaces.length > 0" class="existing-workspaces">
+              <p class="section-title">点击覆盖已有工作区：</p>
+              <div class="workspace-list small">
+                <div 
+                  v-for="ws in targetWorkspaces" 
+                  :key="ws.fileId"
+                  class="workspace-item"
+                  @click="selectForOverwrite(ws)"
+                  :class="{ selected: selectedOverwriteId === ws.fileId }"
+                >
+                  <div class="ws-info">
+                    <span class="ws-name">{{ ws.metadata.name }}</span>
+                    <span class="ws-time">{{ formatDate(ws.metadata.time) }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="errorMessage" class="error-message">{{ errorMessage }}</div>
+            
+            <div class="dialog-actions">
+              <button class="btn-primary" @click="handleSave" :disabled="isSaving || !workspaceName.trim()">
+                {{ isSaving ? '保存中...' : (selectedOverwriteId ? '覆盖已有工作区' : '保存为新工作区') }}
+              </button>
             </div>
           </div>
 
-          <!-- 单云时显示目标提示条 -->
-          <div v-else class="save-target-banner">
-            <span class="banner-icon">{{ hasRetiehe ? '☁️' : '📡' }}</span>
-            <span>保存至：<strong>{{ hasRetiehe ? 'SCE 云服务' : 'WebDAV 网盘' }}</strong></span>
-            <span v-if="backupMode && hasWebdav !== false" class="backup-hint">· 同时备份至 WebDAV ✓</span>
-          </div>
-
-          <div class="form-group">
-            <label>工作区名称</label>
-            <input 
-              type="text" 
-              v-model="workspaceName" 
-              placeholder="例如：2026级二班座位表" 
-              maxlength="50"
-              @keyup.enter="handleSave"
-              autofocus
-            />
-          </div>
-          
-          <div v-if="targetWorkspaces.length > 0" class="existing-workspaces">
-            <p class="section-title">点击覆盖已有工作区：</p>
-            <div class="workspace-list small">
+          <!-- Mode: Load -->
+          <div v-else class="load-section">
+            <!-- 双云时显示 Tab 切换 -->
+            <div class="cloud-tabs" v-if="hasWebdav && hasRetiehe">
+              <button :class="{ active: activeTab === 'retiehe' }" @click="activeTab = 'retiehe'">SCE 云服务</button>
+              <button :class="{ active: activeTab === 'webdav' }" @click="activeTab = 'webdav'">WebDAV 网盘</button>
+            </div>
+            <!-- 单云时显示来源说明 -->
+            <div v-else class="cloud-source-label">
+              <span>{{ hasRetiehe ? '☁️ SCE 云服务' : '📡 WebDAV 网盘' }}</span>
+              <span v-if="backupMode" class="backup-tag">备份模式</span>
+            </div>
+            
+            <div v-if="!currentTabWorkspaces || currentTabWorkspaces.length === 0" class="empty-state mt-2">
+              <div class="empty-icon">📭</div>
+              <p>{{ activeTab === 'webdav' ? 'WebDAV 网盘上' : 'SCE 云端' }}暂无工作区</p>
+              <p class="empty-hint">切换到「保存」模式将当前编辑内容上传到云端</p>
+            </div>
+            <div v-else class="workspace-grid mt-2">
               <div 
-                v-for="ws in targetWorkspaces" 
+                v-for="ws in currentTabWorkspaces" 
                 :key="ws.fileId"
-                class="workspace-item"
-                @click="selectForOverwrite(ws)"
-                :class="{ selected: selectedOverwriteId === ws.fileId }"
+                class="workspace-card"
               >
-                <div class="ws-info">
-                  <span class="ws-name">{{ ws.metadata.name }}</span>
-                  <span class="ws-time">{{ formatDate(ws.metadata.time) }}</span>
+                <div class="card-content" @click="handleLoad(ws.fileId, ws.source)">
+                  <div class="card-icon">📁</div>
+                  <div class="card-details">
+                    <h4 class="ws-name">{{ ws.metadata.name }}</h4>
+                    <p class="ws-meta">
+                      {{ formatDate(ws.metadata.time) }}
+                      <span v-if="ws.metadata.size"> · {{ formatSize(ws.metadata.size) }}</span>
+                    </p>
+                  </div>
+                </div>
+                <div class="card-actions">
+                  <button class="icon-btn delete-btn" title="删除此工作区" @click.stop="confirmDelete(ws)">🗑️</button>
                 </div>
               </div>
             </div>
+            
+            <div v-if="errorMessage" class="error-message mt-16">{{ errorMessage }}</div>
           </div>
-
-          <div v-if="errorMessage" class="error-message">{{ errorMessage }}</div>
-          
-          <div class="dialog-actions">
-            <button class="btn-primary" @click="handleSave" :disabled="isSaving || !workspaceName.trim()">
-              {{ isSaving ? '保存中...' : (selectedOverwriteId ? '覆盖已有工作区' : '保存为新工作区') }}
-            </button>
-          </div>
-        </div>
-
-        <!-- Mode: Load -->
-        <div v-else class="load-section">
-          <!-- 双云时显示 Tab 切换 -->
-          <div class="cloud-tabs" v-if="hasWebdav && hasRetiehe">
-            <button :class="{ active: activeTab === 'retiehe' }" @click="activeTab = 'retiehe'">SCE 云服务</button>
-            <button :class="{ active: activeTab === 'webdav' }" @click="activeTab = 'webdav'">WebDAV 网盘</button>
-          </div>
-          <!-- 单云时显示来源说明 -->
-          <div v-else class="cloud-source-label">
-            <span>{{ hasRetiehe ? '☁️ SCE 云服务' : '📡 WebDAV 网盘' }}</span>
-            <span v-if="backupMode" class="backup-tag">备份模式</span>
-          </div>
-          
-          <div v-if="!currentTabWorkspaces || currentTabWorkspaces.length === 0" class="empty-state mt-2">
-            <div class="empty-icon">📭</div>
-            <p>{{ activeTab === 'webdav' ? 'WebDAV 网盘上' : 'SCE 云端' }}暂无工作区</p>
-            <p class="empty-hint">切换到「保存」模式将当前编辑内容上传到云端</p>
-          </div>
-          <div v-else class="workspace-grid mt-2">
-            <div 
-              v-for="ws in currentTabWorkspaces" 
-              :key="ws.fileId"
-              class="workspace-card"
-            >
-              <div class="card-content" @click="handleLoad(ws.fileId, ws.source)">
-                <div class="card-icon">📁</div>
-                <div class="card-details">
-                  <h4 class="ws-name">{{ ws.metadata.name }}</h4>
-                  <p class="ws-meta">
-                    {{ formatDate(ws.metadata.time) }}
-                    <span v-if="ws.metadata.size"> · {{ formatSize(ws.metadata.size) }}</span>
-                  </p>
-                </div>
-              </div>
-              <div class="card-actions">
-                <button class="icon-btn delete-btn" title="删除此工作区" @click.stop="confirmDelete(ws)">🗑️</button>
-              </div>
-            </div>
-          </div>
-          
-          <div v-if="errorMessage" class="error-message mt-16">{{ errorMessage }}</div>
         </div>
       </div>
     </div>
-  </div>
+  </transition>
 </template>
 
 <script setup>
@@ -698,5 +700,26 @@ const formatSize = (bytes) => {
 
 .mt-16 {
   margin-top: 16px;
+}
+
+/* Transition styles */
+.dialog-fade-enter-active,
+.dialog-fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.dialog-fade-enter-from,
+.dialog-fade-leave-to {
+  opacity: 0;
+}
+
+.dialog-fade-enter-active .cloud-workspace-dialog {
+  animation: slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.dialog-fade-leave-active .cloud-workspace-dialog {
+  transform: translateY(20px);
+  opacity: 0;
+  transition: all 0.3s ease;
 }
 </style>

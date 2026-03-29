@@ -6,6 +6,7 @@
         <svg viewBox="0 0 40 40" class="in-ring-svg">
           <circle class="in-ring-bg" cx="20" cy="20" r="16" />
           <circle class="in-ring-fill" cx="20" cy="20" r="16"
+            pathLength="100"
             :stroke-dasharray="`${satPct} ${100 - satPct}`"
             :style="{ stroke: gradeColor }" />
         </svg>
@@ -156,7 +157,6 @@ const gradeIcon = computed(() => {
   stroke-linecap: round;
   stroke-dasharray: 0 100;
   transition: stroke-dasharray 0.8s ease;
-  pathLength: 100;
 }
 
 .in-ring-pct {

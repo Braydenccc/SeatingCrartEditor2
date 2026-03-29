@@ -3,46 +3,53 @@
     <h4 class="builder-title">添加新规则</h4>
 
     <!-- 句子式构建器 -->
+    <!-- 句子式构建器 -->
     <div class="sentence-builder">
       <!-- Step 1: 主体类型 -->
       <div class="builder-segment">
-        <label class="seg-label">主体</label>
-        <select v-model="subjectKind" class="seg-select" @change="onSubjectKindChange">
-          <option value="student">单个学生</option>
-          <option value="pair">学生对</option>
-          <option value="tag">标签分组</option>
-          <option value="tag_pair">标签对</option>
-        </select>
+        <label class="seg-label">针对对象</label>
+        <div class="chip-group">
+          <button 
+            v-for="kind in subjectKinds" 
+            :key="kind.key"
+            class="chip-item"
+            :class="{ active: subjectKind === kind.key }"
+            @click="setSubjectKind(kind.key)"
+          >
+            {{ kind.label }}
+          </button>
+        </div>
       </div>
-
-      <span class="builder-connector">的</span>
 
       <!-- Step 2: 谓词（规则类型）-->
       <div class="builder-segment">
-        <label class="seg-label">规则</label>
-        <select v-model="selectedPredicate" class="seg-select pred-select" @change="onPredicateChange">
-          <option value="" disabled>选择规则类型</option>
-          <optgroup v-for="group in filteredPredicateGroups" :key="group.label" :label="group.label">
-            <option v-for="p in group.predicates" :key="p.key" :value="p.key">
-              {{ p.label }}
-            </option>
-          </optgroup>
-        </select>
+        <label class="seg-label">应用规则</label>
+        <div class="rule-selector-wrap">
+          <select v-model="selectedPredicate" class="seg-select pred-select" @change="onPredicateChange">
+            <option value="" disabled>请选择规则类型...</option>
+            <optgroup v-for="group in filteredPredicateGroups" :key="group.label" :label="group.label">
+              <option v-for="p in group.predicates" :key="p.key" :value="p.key">
+                {{ p.label }}
+              </option>
+            </optgroup>
+          </select>
+          <div class="select-arrow"></div>
+        </div>
       </div>
 
       <!-- Step 3: 优先级 -->
       <div class="builder-segment">
-        <label class="seg-label">优先级</label>
-        <div class="priority-selector">
+        <label class="seg-label">重要程度</label>
+        <div class="priority-pills">
           <button
             v-for="p in priorities"
             :key="p.key"
-            class="priority-btn"
-            :class="{ active: selectedPriority === p.key }"
-            :style="selectedPriority === p.key ? { background: p.color, borderColor: p.color } : {}"
+            class="priority-pill"
+            :class="[p.key, { active: selectedPriority === p.key }]"
             @click="selectedPriority = p.key"
           >
-            {{ p.icon }} {{ p.label }}
+            <span class="pill-dot"></span>
+            {{ p.label }}
           </button>
         </div>
       </div>
@@ -162,9 +169,14 @@
     </div>
 
     <!-- 预览文本 -->
-    <div v-if="previewText" class="preview-text">
-      <span class="preview-label">预览：</span>
-      <span class="preview-content">{{ previewText }}</span>
+    <!-- 智能预览卡片 -->
+    <div v-if="previewText" class="builder-preview-section">
+      <label class="seg-label">效果预览</label>
+      <div class="smart-preview-card" :class="selectedPriority">
+        <div class="preview-main">
+          <div class="preview-text-content">{{ previewText }}</div>
+        </div>
+      </div>
     </div>
 
     <!-- 验证警告 -->
@@ -226,11 +238,23 @@ const subjectTagId2 = ref(null)
 // 谓词参数
 const paramValues = ref({})
 
-const priorities = [
-  { key: 'required', label: '必须', color: '#ef4444', icon: '🔴' },
-  { key: 'prefer', label: '尽量', color: '#f59e0b', icon: '🟡' },
-  { key: 'optional', label: '可选', color: '#94a3b8', icon: '⚪' }
+const subjectKinds = [
+  { key: 'student', label: '单个学生' },
+  { key: 'pair', label: '学生搭档' },
+  { key: 'tag', label: '标签分组' },
+  { key: 'tag_pair', label: '标签对比' }
 ]
+
+const priorities = [
+  { key: 'required', label: '强制必须', color: '#ef4444', icon: '🔴' },
+  { key: 'prefer', label: '建议尽量', color: '#f59e0b', icon: '🟡' },
+  { key: 'optional', label: '可选参考', color: '#94a3b8', icon: '⚪' }
+]
+
+const setSubjectKind = (kind) => {
+  subjectKind.value = kind
+  onSubjectKindChange()
+}
 
 // ==================== 谓词分组 ====================
 const predicateGroups = [
@@ -395,71 +419,111 @@ const resetForm = () => {
 /* ==================== 句子构建器 ==================== */
 .sentence-builder {
   display: flex;
-  align-items: flex-end;
-  gap: 8px;
-  flex-wrap: wrap;
-  padding: 14px;
-  background: #f8fafc;
-  border-radius: 10px;
-  border: 1.5px solid #e2e8f0;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #eef2f6;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
 }
 
 .builder-segment {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8px;
 }
 
 .seg-label {
-  font-size: 10px;
-  font-weight: 600;
-  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 700;
+  color: #475569;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.05em;
+}
+
+.chip-group {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.chip-item {
+  padding: 8px 14px;
+  background: #f1f5f9;
+  border: 1px solid transparent;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #475569; /* Darkened for readability */
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.chip-item:hover { background: #e2e8f0; color: #1e293b; }
+.chip-item.active {
+  background: var(--color-primary);
+  color: white;
+  box-shadow: 0 2px 8px rgba(35, 88, 123, 0.25);
+}
+
+.rule-selector-wrap {
+  position: relative;
 }
 
 .seg-select {
-  padding: 7px 10px;
+  width: 100%;
+  padding: 10px 14px;
+  background: #fff;
   border: 1.5px solid #e2e8f0;
-  border-radius: 8px;
-  background: white;
+  border-radius: 10px;
   font-size: 13px;
-  color: #334155;
+  color: #1e293b;
   outline: none;
   cursor: pointer;
-  transition: border-color 0.2s;
+  appearance: none;
+  transition: all 0.2s;
 }
 
-.seg-select:focus { border-color: #23587b; }
-.pred-select { min-width: 160px; }
+.seg-select:focus { border-color: var(--color-primary); background: #f8fafc; }
 
-.builder-connector {
-  font-size: 13px;
-  color: #94a3b8;
-  padding-bottom: 8px;
-}
-
-/* 优先级按钮组 */
-.priority-selector {
+.priority-pills {
   display: flex;
-  gap: 4px;
+  gap: 8px;
 }
 
-.priority-btn {
-  padding: 6px 10px;
+.priority-pill {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px;
+  background: #f8fafc;
   border: 1.5px solid #e2e8f0;
-  border-radius: 8px;
-  background: white;
-  font-size: 12px;
-  font-weight: 500;
-  color: #64748b;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569; /* Darkened for readability */
   cursor: pointer;
   transition: all 0.2s;
-  white-space: nowrap;
 }
 
-.priority-btn:hover { border-color: #94a3b8; }
-.priority-btn.active { color: white; }
+.pill-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #cbd5e1;
+}
+
+.priority-pill.active.required { border-color: #ef4444; background: #fff1f2; color: #ef4444; }
+.priority-pill.active.required .pill-dot { background: #ef4444; }
+
+.priority-pill.active.prefer { border-color: #f59e0b; background: #fffbeb; color: #b45309; }
+.priority-pill.active.prefer .pill-dot { background: #f59e0b; }
+
+.priority-pill.active.optional { border-color: #64748b; background: #f1f5f9; color: #1e293b; }
+.priority-pill.active.optional .pill-dot { background: #64748b; }
 
 /* ==================== 主体选择区 ==================== */
 .subject-section {
@@ -497,7 +561,7 @@ const resetForm = () => {
 
 .input-group label {
   font-size: 11px;
-  color: #64748b;
+  color: #475569; /* Darkened for readability */
   font-weight: 500;
 }
 
@@ -521,32 +585,42 @@ const resetForm = () => {
 .pair-arrow {
   font-size: 18px;
   font-weight: 700;
-  color: #94a3b8;
+  color: #64748b; /* Darkened for readability */
   padding-bottom: 8px;
   flex-shrink: 0;
 }
 
 /* ==================== 预览文本 ==================== */
-.preview-text {
-  padding: 10px 14px;
-  background: linear-gradient(135deg, #eff6ff, #f0fdf4);
-  border: 1px solid #bfdbfe;
-  border-radius: 8px;
-  font-size: 13px;
+.builder-preview-section {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 8px;
 }
 
-.preview-label {
-  color: #64748b;
-  font-weight: 500;
-  flex-shrink: 0;
+.smart-preview-card {
+  padding: 12px 16px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
 }
 
-.preview-content {
-  color: #1e40af;
-  font-weight: 500;
+.smart-preview-card.required { border-left: 4px solid #ef4444; }
+.smart-preview-card.prefer { border-left: 4px solid #f59e0b; }
+.smart-preview-card.optional { border-left: 4px solid #cbd5e1; } /* Lighter border, but better context */
+
+.preview-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+
+
+.preview-text-content {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
 }
 
 /* ==================== 警告 ==================== */
@@ -589,7 +663,7 @@ const resetForm = () => {
 }
 
 .btn-add:hover:not(:disabled) { background: #1a4260; transform: translateY(-1px); }
-.btn-add:disabled { background: #cbd5e1; color: #94a3b8; cursor: not-allowed; transform: none; }
+.btn-add:disabled { background: #e2e8f0; color: #64748b; cursor: not-allowed; transform: none; }
 
 .btn-reset {
   padding: 10px 16px;
@@ -597,7 +671,7 @@ const resetForm = () => {
   border-radius: 8px;
   background: white;
   font-size: 13px;
-  color: #64748b;
+  color: #475569; /* Darkened for readability */
   cursor: pointer;
   transition: all 0.2s;
 }
