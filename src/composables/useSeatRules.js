@@ -249,6 +249,8 @@ export function useSeatRules() {
       const selectedB = subjectsB.filter(e => e?.id !== null && e?.id !== undefined)
       const uniqueB = new Set(selectedB.map(getEntryKey))
       if (uniqueB.size !== selectedB.length) warnings.push('集合 B 存在重复对象')
+      const overlap = selectedA.filter(e => uniqueB.has(getEntryKey(e)))
+      if (overlap.length > 0) warnings.push('集合 A 与集合 B 存在重复对象')
     }
 
     for (const paramSpec of meta.params) {
@@ -417,9 +419,7 @@ export function useSeatRules() {
       const peopleB = normalized.subjectsB.filter(e => e.type === 'person').map(e => e.id)
       return (
         (peopleA.includes(id1) && peopleB.includes(id2)) ||
-        (peopleA.includes(id2) && peopleB.includes(id1)) ||
-        (peopleA.includes(id1) && peopleA.includes(id2)) ||
-        (peopleB.includes(id1) && peopleB.includes(id2))
+        (peopleA.includes(id2) && peopleB.includes(id1))
       )
     })
   }

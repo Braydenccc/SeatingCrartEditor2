@@ -415,6 +415,7 @@ const applyQuickTemplate = (key) => {
 .mini-btn { border: 1px solid #dbe3ea; background: white; border-radius: 8px; font-size: 12px; padding: 6px 10px; cursor: pointer; }
 .mini-btn.danger { color: #b91c1c; border-color: #fecaca; }
 .input-group { display: flex; flex-direction: column; gap: 6px; }
+.input-group label { font-size: 12px; font-weight: 600; color: #1f2937; }
 .detail-select, .detail-input { width: 100%; padding: 8px 10px; border: 1px solid #dbe3ea; border-radius: 8px; }
 .params-section { display: flex; flex-direction: column; gap: 10px; }
 .builder-preview-section { display: flex; flex-direction: column; gap: 8px; }

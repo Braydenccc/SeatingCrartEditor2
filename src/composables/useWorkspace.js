@@ -10,7 +10,7 @@ import { setCookie, getCookie } from './useAuth'
 const LAST_WORKSPACE_COOKIE = 'sce_last_workspace'
 
 const FILE_EXT = '.sce'
-const CURRENT_VERSION = '2.0'
+const CURRENT_VERSION = '2.1'
 
 export function useWorkspace() {
   const { students, addStudent, updateStudent, clearAllStudents } = useStudentData()
@@ -19,7 +19,7 @@ export function useWorkspace() {
   const { exportSettings } = useExportSettings()
   const { zones, clearAllZones, addZone, updateZone } = useZoneData()
   const { rules, clearAllRules, addRule } = useSeatRules()
-  const { success, error } = useLogger()
+  const { success, warning, error } = useLogger()
 
   // 生成工作区 JSON 数据 (用于云端或本地保存)
   const getWorkspaceJson = () => {
@@ -279,6 +279,8 @@ export function useWorkspace() {
         // 恢复智能排位规则
         if (workspace.rules && Array.isArray(workspace.rules)) {
           clearAllRules()
+          let totalDroppedSubjects = 0
+          let totalDroppedRules = 0
 
           workspace.rules.forEach(r => {
             const normalized = normalizeRule(r)
@@ -290,6 +292,7 @@ export function useWorkspace() {
             const droppedA = remappedA.length - subjectsA.length
             const droppedB = remappedB.length - subjectsB.length
             if (droppedA > 0 || droppedB > 0) {
+              totalDroppedSubjects += droppedA + droppedB
               console.warn('Workspace rule subject remap dropped entries', {
                 rule: r,
                 droppedA,
@@ -313,8 +316,16 @@ export function useWorkspace() {
                 params: newParams,
                 description: r.description || ''
               })
+            } else {
+              totalDroppedRules += 1
             }
           })
+
+          if (totalDroppedSubjects > 0 || totalDroppedRules > 0) {
+            warning(
+              `工作区规则迁移时丢失了 ${totalDroppedSubjects} 个对象条目，跳过了 ${totalDroppedRules} 条无效规则，请检查规则配置。`
+            )
+          }
         }
 
         resolve(true)

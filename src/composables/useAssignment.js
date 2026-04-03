@@ -11,7 +11,7 @@ import { useStudentData } from './useStudentData'
 import { useSeatChart } from './useSeatChart'
 import { useZoneData } from './useZoneData'
 import { useSeatRules } from './useSeatRules'
-import { PENALTY_WEIGHTS, RulePriority } from '../constants/ruleTypes.js'
+import { PENALTY_WEIGHTS, RulePriority, PREDICATE_META } from '../constants/ruleTypes.js'
 
 export function useAssignment() {
   const { students } = useStudentData()
@@ -132,9 +132,17 @@ export function useAssignment() {
     }
 
     const pairs = []
+    const seenUnorderedPairs = new Set()
+    const isOrderedPredicate = !!PREDICATE_META[rule.predicate]?.ordered
     for (const a of groupA) {
       for (const b of groupB) {
-        if (a !== b) pairs.push({ type: 'pair', studentId1: a, studentId2: b })
+        if (a === b) continue
+        if (!isOrderedPredicate) {
+          const key = a < b ? `${a}:${b}` : `${b}:${a}`
+          if (seenUnorderedPairs.has(key)) continue
+          seenUnorderedPairs.add(key)
+        }
+        pairs.push({ type: 'pair', studentId1: a, studentId2: b })
       }
     }
     return pairs
