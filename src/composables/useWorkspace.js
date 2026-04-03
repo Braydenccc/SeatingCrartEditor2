@@ -63,7 +63,10 @@ export function useWorkspace() {
         rules: (rules.value || []).map(r => ({
           enabled: r.enabled,
           priority: r.priority,
-          subject: { ...r.subject },
+          subjectMode: r.subjectMode,
+          subjectsA: [...(r.subjectsA || [])],
+          subjectsB: [...(r.subjectsB || [])],
+          subject: r.subject ? { ...r.subject } : undefined,
           predicate: r.predicate,
           params: { ...r.params },
           description: r.description
@@ -235,38 +238,64 @@ export function useWorkspace() {
           clearAllRules()
 
           workspace.rules.forEach(r => {
-            // ID 重映射
-            const newSubject = { ...r.subject }
-            if (newSubject.kind === 'student') {
-              newSubject.id = oldStudentIdToNewId[newSubject.id]
-            } else if (newSubject.kind === 'pair') {
-              newSubject.id1 = oldStudentIdToNewId[newSubject.id1]
-              newSubject.id2 = oldStudentIdToNewId[newSubject.id2]
-            } else if (newSubject.kind === 'tag') {
-              newSubject.tagId = oldTagIdToNewId[newSubject.tagId]
-            } else if (newSubject.kind === 'tag_pair') {
-              newSubject.tagId1 = oldTagIdToNewId[newSubject.tagId1]
-              newSubject.tagId2 = oldTagIdToNewId[newSubject.tagId2]
+            const normalizeRule = (rule) => {
+              if (rule.subjectMode === 'single' || rule.subjectMode === 'dual') {
+                return {
+                  subjectMode: rule.subjectMode,
+                  subjectsA: (rule.subjectsA || []).map(item => ({ ...item })),
+                  subjectsB: (rule.subjectsB || []).map(item => ({ ...item }))
+                }
+              }
+              const subject = rule.subject || {}
+              if (subject.kind === 'student') {
+                return { subjectMode: 'single', subjectsA: [{ type: 'person', id: subject.id }], subjectsB: [] }
+              }
+              if (subject.kind === 'tag') {
+                return { subjectMode: 'single', subjectsA: [{ type: 'tag', id: subject.tagId }], subjectsB: [] }
+              }
+              if (subject.kind === 'pair') {
+                return {
+                  subjectMode: 'dual',
+                  subjectsA: [{ type: 'person', id: subject.id1 }],
+                  subjectsB: [{ type: 'person', id: subject.id2 }]
+                }
+              }
+              if (subject.kind === 'tag_pair') {
+                return {
+                  subjectMode: 'dual',
+                  subjectsA: [{ type: 'tag', id: subject.tagId1 }],
+                  subjectsB: [{ type: 'tag', id: subject.tagId2 }]
+                }
+              }
+              return { subjectMode: 'single', subjectsA: [], subjectsB: [] }
             }
+
+            const normalized = normalizeRule(r)
+            const remapEntry = (entry) => {
+              if (!entry) return null
+              if (entry.type === 'person') {
+                return { ...entry, id: oldStudentIdToNewId[entry.id] }
+              }
+              if (entry.type === 'tag') {
+                return { ...entry, id: oldTagIdToNewId[entry.id] }
+              }
+              return entry
+            }
+
+            const subjectsA = normalized.subjectsA.map(remapEntry).filter(e => !!e?.id)
+            const subjectsB = normalized.subjectsB.map(remapEntry).filter(e => !!e?.id)
 
             const newParams = { ...r.params }
             if (newParams.tagId) newParams.tagId = oldTagIdToNewId[newParams.tagId]
             if (newParams.zoneId) newParams.zoneId = oldZoneIdToNewId[newParams.zoneId]
 
-            // 只有主体 ID 都映射成功才添加
-            const subjectValid = (kind) => {
-              if (kind === 'student') return !!newSubject.id
-              if (kind === 'pair') return !!newSubject.id1 && !!newSubject.id2
-              if (kind === 'tag') return !!newSubject.tagId
-              if (kind === 'tag_pair') return !!newSubject.tagId1 && !!newSubject.tagId2
-              return true
-            }
-
-            if (subjectValid(newSubject.kind)) {
+            if (subjectsA.length > 0 && (normalized.subjectMode !== 'dual' || subjectsB.length > 0)) {
               addRule({
                 enabled: r.enabled ?? true,
                 priority: r.priority,
-                subject: newSubject,
+                subjectMode: normalized.subjectMode,
+                subjectsA,
+                subjectsB,
                 predicate: r.predicate,
                 params: newParams,
                 description: r.description || ''

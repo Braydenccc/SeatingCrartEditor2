@@ -124,8 +124,16 @@
           <div v-if="expandedId === rule.id" class="rule-detail">
             <div class="rule-detail-grid">
               <div class="detail-item">
-                <span class="detail-key">主体类型</span>
-                <span class="detail-val">{{ SUBJECT_KIND_LABELS[rule.subject.kind] }}</span>
+                <span class="detail-key">对象模式</span>
+                <span class="detail-val">{{ SUBJECT_KIND_LABELS[rule.subjectMode || 'single'] }}</span>
+              </div>
+              <div class="detail-item full-width">
+                <span class="detail-key">对象集合 A</span>
+                <span class="detail-val">{{ formatSubjects(rule.subjectsA || []) }}</span>
+              </div>
+              <div v-if="(rule.subjectMode || 'single') === 'dual'" class="detail-item full-width">
+                <span class="detail-key">对象集合 B</span>
+                <span class="detail-val">{{ formatSubjects(rule.subjectsB || []) }}</span>
               </div>
               <div class="detail-item">
                 <span class="detail-key">谓词</span>
@@ -319,6 +327,15 @@ const formatParamValue = (predicate, key, value) => {
   if (key === 'scope') return SCOPE_LABELS[value] ?? value
   if (key === 'tolerance') return value === 0 ? '仅正后方' : '正后方±1列'
   return String(value)
+}
+
+const formatSubjects = (subjects) => {
+  if (!subjects?.length) return '-'
+  return subjects.map(s => {
+    if (s.type === 'person') return `学生#${s.id}`
+    if (s.type === 'tag') return `标签#${s.id}`
+    return '-'
+  }).join('、')
 }
 
 const focusRule = async (ruleId) => {

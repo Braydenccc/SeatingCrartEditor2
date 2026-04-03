@@ -72,40 +72,72 @@ export function useAssignment() {
 
   // ==================== 新引擎：主体展开 ====================
 
-  /**
-   * 将规则 subject 展开为具体的 { studentId } 或 { studentId1, studentId2 } 数组
-   */
-  const expandSubject = (subject, studentList) => {
+  const normalizeRuleSubjects = (rule) => {
+    if (rule.subjectMode === 'single' || rule.subjectMode === 'dual') {
+      return {
+        subjectMode: rule.subjectMode,
+        subjectsA: rule.subjectsA || [],
+        subjectsB: rule.subjectsB || []
+      }
+    }
+
+    const subject = rule.subject || {}
     if (subject.kind === 'student') {
-      return [{ type: 'single', studentId: subject.id }]
+      return { subjectMode: 'single', subjectsA: [{ type: 'person', id: subject.id }], subjectsB: [] }
     }
-
-    if (subject.kind === 'pair') {
-      return [{ type: 'pair', studentId1: subject.id1, studentId2: subject.id2 }]
-    }
-
     if (subject.kind === 'tag') {
-      const taggedStudents = studentList.filter(s =>
-        s.tags && s.tags.includes(subject.tagId)
-      )
-      return taggedStudents.map(s => ({ type: 'single', studentId: s.id }))
+      return { subjectMode: 'single', subjectsA: [{ type: 'tag', id: subject.tagId }], subjectsB: [] }
     }
-
+    if (subject.kind === 'pair') {
+      return {
+        subjectMode: 'dual',
+        subjectsA: [{ type: 'person', id: subject.id1 }],
+        subjectsB: [{ type: 'person', id: subject.id2 }]
+      }
+    }
     if (subject.kind === 'tag_pair') {
-      const group1 = studentList.filter(s => s.tags && s.tags.includes(subject.tagId1))
-      const group2 = studentList.filter(s => s.tags && s.tags.includes(subject.tagId2))
-      const pairs = []
-      for (const s1 of group1) {
-        for (const s2 of group2) {
-          if (s1.id !== s2.id) {
-            pairs.push({ type: 'pair', studentId1: s1.id, studentId2: s2.id })
-          }
+      return {
+        subjectMode: 'dual',
+        subjectsA: [{ type: 'tag', id: subject.tagId1 }],
+        subjectsB: [{ type: 'tag', id: subject.tagId2 }]
+      }
+    }
+    return { subjectMode: 'single', subjectsA: [], subjectsB: [] }
+  }
+
+  const expandEntriesToStudentIds = (entries, studentList) => {
+    const ids = new Set()
+    for (const entry of entries || []) {
+      if (!entry?.id) continue
+      if (entry.type === 'person') ids.add(entry.id)
+      if (entry.type === 'tag') {
+        for (const s of studentList) {
+          if (s.tags && s.tags.includes(entry.id)) ids.add(s.id)
         }
       }
-      return pairs
+    }
+    return [...ids]
+  }
+
+  /**
+   * 将规则主体展开为具体的 { studentId } 或 { studentId1, studentId2 } 数组
+   */
+  const expandSubject = (rule, studentList) => {
+    const normalized = normalizeRuleSubjects(rule)
+    const groupA = expandEntriesToStudentIds(normalized.subjectsA, studentList)
+    const groupB = expandEntriesToStudentIds(normalized.subjectsB, studentList)
+
+    if (normalized.subjectMode === 'single') {
+      return groupA.map(studentId => ({ type: 'single', studentId }))
     }
 
-    return []
+    const pairs = []
+    for (const a of groupA) {
+      for (const b of groupB) {
+        if (a !== b) pairs.push({ type: 'pair', studentId1: a, studentId2: b })
+      }
+    }
+    return pairs
   }
 
   // ==================== 新引擎：违规检测 ====================
@@ -252,7 +284,7 @@ export function useAssignment() {
 
     for (const rule of activeRules) {
       const weight = PENALTY_WEIGHTS[rule.priority] ?? PENALTY_WEIGHTS.optional
-      const subjects = expandSubject(rule.subject, studentList)
+      const subjects = expandSubject(rule, studentList)
 
       // 分组谓词单独处理
       if (rule.predicate === 'DISTRIBUTE_EVENLY' || rule.predicate === 'CLUSTER_TOGETHER') {
@@ -309,7 +341,7 @@ export function useAssignment() {
       if (rule.priority !== RulePriority.REQUIRED) continue
       if (!['IN_ROW_RANGE', 'IN_GROUP_RANGE'].includes(rule.predicate)) continue
 
-      const subjects = expandSubject(rule.subject, studentList)
+      const subjects = expandSubject(rule, studentList)
       for (const subj of subjects) {
         if (subj.type !== 'single') continue
         if (assignedStudents.has(subj.studentId)) continue
@@ -336,7 +368,7 @@ export function useAssignment() {
       if (rule.priority !== RulePriority.REQUIRED) continue
       if (rule.predicate !== 'MUST_BE_SEATMATES') continue
 
-      const subjects = expandSubject(rule.subject, studentList)
+      const subjects = expandSubject(rule, studentList)
       for (const subj of subjects) {
         if (subj.type !== 'pair') continue
         if (assignedStudents.has(subj.studentId1) || assignedStudents.has(subj.studentId2)) continue
@@ -464,7 +496,7 @@ export function useAssignment() {
     const computeViolatingStudents = (assignment) => {
       const violating = new Set()
       for (const rule of activeRules) {
-        const subjects = expandSubject(rule.subject, studentList)
+        const subjects = expandSubject(rule, studentList)
         for (const subj of subjects) {
           const { violated } = checkViolation(rule, subj, assignment)
           if (violated) {
@@ -486,7 +518,7 @@ export function useAssignment() {
     const partnerMap = new Map()
     activeRules.forEach(r => {
       if (r.priority === RulePriority.REQUIRED && r.predicate === 'MUST_BE_SEATMATES') {
-        const subjects = expandSubject(r.subject, studentList)
+        const subjects = expandSubject(r, studentList)
         subjects.forEach(s => {
           if (s.type === 'pair') {
             partnerMap.set(s.studentId1, s.studentId2)
@@ -700,7 +732,7 @@ export function useAssignment() {
     const violated = []
 
     for (const rule of activeRules) {
-      const subjects = expandSubject(rule.subject, studentList)
+      const subjects = expandSubject(rule, studentList)
       let isFullySatisfied = true
       const violationDetails = []
 
@@ -853,4 +885,3 @@ export function useAssignment() {
     runSmartAssignment
   }
 }
-
