@@ -127,6 +127,23 @@ const handleExportRules = () => {
   URL.revokeObjectURL(url)
 }
 
+const handleImportRules = () => {
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = '.json,application/json'
+  input.onchange = async (event) => {
+    const file = event.target?.files?.[0]
+    if (!file) return
+    const text = await file.text()
+    importRules(text)
+  }
+  input.click()
+}
+
+const onRuleAdded = () => {
+  //
+}
+
 // 当模态框关闭时重置 tab
 watch(() => props.visible, (visible) => {
   if (!visible) {
