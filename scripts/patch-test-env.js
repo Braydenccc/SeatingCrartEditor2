@@ -18,6 +18,13 @@ function encodeHtmlEntities(text) {
 }
 
 try {
+  // 解决 GitHub Actions 容器环境下的 git 目录所有权安全限制
+  try {
+    execSync("git config --global --add safe.directory '*'");
+  } catch (e) {
+    // Ignore errors if this fails (e.g. locally without perms)
+  }
+
   // 仅保留基础环境变量（如果需要的话，目前脚本不再依赖当前环境名字来决定下拉状态
   // 而是通过浏览器端实际访问的 URL 或简单保持下拉框供跳转）
 
