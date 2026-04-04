@@ -5,7 +5,7 @@ on:
     branches:
       - main
       - test
-      - 'test/**'
+      - 'test-*'
 
 jobs:
   # ── 生产环境：main 分支 → sce.jbyc.cc ─────────────────────────────────────
@@ -80,7 +80,7 @@ jobs:
   # ── 测试环境：test 分支 → test.sce.jbyc.cc ────────────────────────────────
   deploy-staging:
     name: 🧪 Staging (test.sce.jbyc.cc)
-    if: github.ref == 'refs/heads/test' || startsWith(github.ref, 'refs/heads/test/')
+    if: github.ref == 'refs/heads/test' || startsWith(github.ref, 'refs/heads/test-')
     runs-on: ubuntu-latest
     container:
       image: shangzheny/rth-host-helper@sha256:789428be24aefa9c839075687bd8ca0e0819776ef439b81e7610a36eebc107fc

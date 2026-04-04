@@ -45,8 +45,8 @@ export function resolveStagingTarget(branchName) {
     };
   }
 
-  if (!normalizedBranch.startsWith('test/')) {
-    throw new Error(`无效分支：${normalizedBranch}，必须是 test 或 test/<path>。`);
+  if (!normalizedBranch.startsWith('test-')) {
+    throw new Error(`无效分支：${normalizedBranch}，必须是 test 或 test-<path>。`);
   }
 
   const deployPath = validateDeploySubPath(normalizedBranch.slice(5));
