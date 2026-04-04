@@ -68,7 +68,10 @@ try {
 
   // 1. index.html
   let indexHtml = fs.readFileSync('index.html', 'utf8');
-  indexHtml = indexHtml.replace('<title>座位表编辑器-scev2byccc</title>', '<title>[测试版] 座位表编辑器-scev2byccc</title>');
+  indexHtml = indexHtml.replace(/<title>([\s\S]*?)<\/title>/, (_, title) => {
+    const cleanedTitle = String(title).trim().replace(/^\[test\]\s*/i, '');
+    return `<title>[test] ${cleanedTitle}</title>`;
+  });
   fs.writeFileSync('index.html', indexHtml);
 
   // 2. LoginDialog.vue
