@@ -1,4 +1,4 @@
-import { execSync } from 'node:child_process';
+import { execFileSync, execSync } from 'node:child_process';
 
 function run(command) {
   return execSync(command, { stdio: 'pipe', encoding: 'utf8' }).trim();
@@ -6,6 +6,10 @@ function run(command) {
 
 function runInherit(command) {
   execSync(command, { stdio: 'inherit' });
+}
+
+function runFileInherit(command, args) {
+  execFileSync(command, args, { stdio: 'inherit' });
 }
 
 function quoteRef(ref) {
@@ -35,7 +39,7 @@ if (!safePath) {
 }
 
 if (!/^[a-zA-Z0-9._/-]+$/.test(safePath)) {
-  console.error('部署路径仅允许字母、数字、点、下划线、短横线和斜杠。');
+  console.error('部署路径仅允许字母、数字、点、下划线、连字符和斜杠。');
   process.exit(1);
 }
 
@@ -57,5 +61,5 @@ if (pathSegments.some((segment) => segment === 'test')) {
 
 const deployBranch = `test/${safePath}`;
 
-runInherit(`git push origin HEAD:refs/heads/${deployBranch}`);
+runFileInherit('git', ['push', 'origin', `HEAD:refs/heads/${deployBranch}`]);
 console.log(`已推送当前分支到 ${deployBranch}，将部署到 https://test.sce.jbyc.cc/${safePath}`);
