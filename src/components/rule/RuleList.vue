@@ -706,14 +706,22 @@ defineExpose({ focusRule })
 }
 
 /* 开关 */
-.rule-toggle { flex-shrink: 0; padding-left: 12px; }
+.rule-toggle {
+  flex-shrink: 0;
+  padding-left: 12px;
+  display: flex;
+  align-items: center;
+}
 
 .toggle-switch {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   position: relative;
   width: 34px;
   height: 20px;
   cursor: pointer;
+  vertical-align: middle;
 }
 
 .toggle-switch input { display: none; }
