@@ -954,7 +954,9 @@ const runAssignmentPrecheck = ({ silent = false } = {}) => {
     warnings.push('当前未启用规则，本次将接近随机排位')
   }
 
-  const coveredStudents = students.value.filter(s => getRulesForStudent(s.id).length > 0).length
+  const coveredStudents = students.value.filter(s =>
+    getRulesForStudent(s.id).some(rule => rule.enabled !== false)
+  ).length
   const coverageRate = studentCount > 0 ? Math.round((coveredStudents / studentCount) * 100) : 0
   const estimatedMs = Math.max(
     300,

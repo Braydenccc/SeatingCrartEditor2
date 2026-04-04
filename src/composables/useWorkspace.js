@@ -293,7 +293,7 @@ export function useWorkspace() {
             const droppedB = remappedB.length - subjectsB.length
             if (droppedA > 0 || droppedB > 0) {
               totalDroppedSubjects += droppedA + droppedB
-              console.warn('Workspace rule subject remap dropped entries', {
+              warning('Workspace rule subject remap dropped entries', {
                 rule: r,
                 droppedA,
                 droppedB
@@ -306,7 +306,7 @@ export function useWorkspace() {
 
             const hasValidSubjects = subjectsA.length > 0 && (normalized.subjectMode !== 'dual' || subjectsB.length > 0)
             if (hasValidSubjects) {
-              addRule({
+              const result = addRule({
                 enabled: r.enabled ?? true,
                 priority: r.priority,
                 subjectMode: normalized.subjectMode,
@@ -316,6 +316,13 @@ export function useWorkspace() {
                 params: newParams,
                 description: r.description || ''
               })
+              if (!result?.success) {
+                totalDroppedRules += 1
+                warning('Workspace rule skipped due to validation failure', {
+                  rule: r,
+                  warnings: result?.warnings || []
+                })
+              }
             } else {
               totalDroppedRules += 1
             }
