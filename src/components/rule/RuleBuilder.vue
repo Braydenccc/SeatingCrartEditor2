@@ -1,6 +1,6 @@
 <template>
   <div class="rule-builder">
-    <h4 class="builder-title">添加新规则</h4>
+    <h4 class="builder-title">{{ isEditing ? '编辑规则' : '添加新规则' }}</h4>
 
     <div v-if="mode === 'quick'" class="quick-template-wrap">
       <label class="seg-label">快捷场景</label>
@@ -164,8 +164,8 @@
     </div>
 
     <div class="builder-footer">
-      <button class="btn-add" :disabled="!canAdd" @click="handleAdd">添加规则</button>
-      <button class="btn-reset" @click="resetForm">重置</button>
+      <button class="btn-add" :disabled="!canAdd" @click="handleAdd">{{ isEditing ? '保存修改' : '添加规则' }}</button>
+      <button class="btn-reset" @click="resetForm">{{ isEditing ? '取消编辑' : '重置' }}</button>
     </div>
   </div>
 </template>
@@ -188,13 +188,17 @@ const props = defineProps({
   mode: {
     type: String,
     default: 'quick'
+  },
+  editingRule: {
+    type: Object,
+    default: null
   }
 })
 
 const { students } = useStudentData()
 const { tags } = useTagData()
 const { zones } = useZoneData()
-const { addRule, validateRule, renderRuleText } = useSeatRules()
+const { addRule, updateRule, validateRule, renderRuleText, normalizeRuleShape } = useSeatRules()
 
 const QUICK_TEMPLATE_KEYS = {
   FRONT_ROW: 'front-row',
@@ -210,6 +214,7 @@ const description = ref('')
 const subjectsA = ref([{ type: 'person', id: null }])
 const subjectsB = ref([{ type: 'person', id: null }])
 const paramValues = ref({})
+const isEditing = computed(() => !!props.editingRule?.id)
 
 const subjectModes = [
   { key: 'single', label: '单对象' },
@@ -336,6 +341,12 @@ const onPredicateChange = () => {
 
 const handleAdd = () => {
   if (!canAdd.value) return
+  if (isEditing.value) {
+    updateRule(props.editingRule.id, currentRulePayload.value)
+    emit('added', props.editingRule.id)
+    resetForm()
+    return
+  }
   const result = addRule(currentRulePayload.value)
   if (result.success) {
     emit('added', result.rule)
@@ -351,6 +362,25 @@ const resetForm = () => {
   subjectsA.value = [{ type: 'person', id: null }]
   subjectsB.value = [{ type: 'person', id: null }]
   paramValues.value = {}
+}
+
+const applyEditingRule = (rule) => {
+  if (!rule?.id) {
+    resetForm()
+    return
+  }
+  const normalized = normalizeRuleShape(rule)
+  subjectMode.value = normalized.subjectMode || 'single'
+  selectedPredicate.value = rule.predicate || ''
+  selectedPriority.value = rule.priority || RulePriority.PREFER
+  description.value = rule.description || ''
+  subjectsA.value = normalized.subjectsA?.length
+    ? normalized.subjectsA.map(s => ({ ...s }))
+    : [{ type: 'person', id: null }]
+  subjectsB.value = normalized.subjectsB?.length
+    ? normalized.subjectsB.map(s => ({ ...s }))
+    : [{ type: 'person', id: null }]
+  paramValues.value = { ...(rule.params || getDefaultParams(rule.predicate)) }
 }
 
 const applyQuickTemplate = (key) => {
@@ -388,6 +418,14 @@ const applyQuickTemplate = (key) => {
   selectedPredicate.value = tpl.predicate
   paramValues.value = tpl.params()
 }
+
+watch(
+  () => props.editingRule,
+  (rule) => {
+    applyEditingRule(rule)
+  },
+  { immediate: true, deep: true }
+)
 </script>
 
 <style scoped>
