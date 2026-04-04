@@ -34,7 +34,7 @@
 
             <!-- 单云时显示目标提示条 -->
             <div v-else class="save-target-banner">
-              <span class="banner-icon">{{ hasRetiehe ? '云' : '盘' }}</span>
+              <span class="material-symbols-rounded ui-icon banner-icon">{{ hasRetiehe ? 'cloud' : 'storage' }}</span>
               <span>保存至：<strong>{{ hasRetiehe ? 'SCE 云服务' : 'WebDAV 网盘' }}</strong></span>
               <span v-if="backupMode && hasWebdav !== false" class="backup-hint">· 同时备份至 WebDAV ✓</span>
             </div>
@@ -92,7 +92,7 @@
             </div>
             
             <div v-if="!currentTabWorkspaces || currentTabWorkspaces.length === 0" class="empty-state mt-2">
-              <div class="empty-icon">无</div>
+              <div class="material-symbols-rounded ui-icon empty-icon">inbox</div>
               <p>{{ activeTab === 'webdav' ? 'WebDAV 网盘上' : 'SCE 云端' }}暂无工作区</p>
               <p class="empty-hint">切换到「保存」模式将当前编辑内容上传到云端</p>
             </div>
@@ -103,7 +103,7 @@
                 class="workspace-card"
               >
                 <div class="card-content" @click="handleLoad(ws.fileId, ws.source)">
-                  <div class="card-icon">档</div>
+                  <div class="material-symbols-rounded ui-icon card-icon">folder</div>
                   <div class="card-details">
                     <h4 class="ws-name">{{ ws.metadata.name }}</h4>
                     <p class="ws-meta">
@@ -113,7 +113,9 @@
                   </div>
                 </div>
                 <div class="card-actions">
-                  <button class="icon-btn delete-btn" title="删除此工作区" @click.stop="confirmDelete(ws)">删</button>
+                  <button class="icon-btn delete-btn" title="删除此工作区" @click.stop="confirmDelete(ws)">
+                    <span class="material-symbols-rounded ui-icon">delete</span>
+                  </button>
                 </div>
               </div>
             </div>
