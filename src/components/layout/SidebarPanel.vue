@@ -956,10 +956,6 @@ const runAssignmentPrecheck = ({ silent = false } = {}) => {
 
   const coveredStudents = students.value.filter(s => getRulesForStudent(s.id).length > 0).length
   const coverageRate = studentCount > 0 ? Math.round((coveredStudents / studentCount) * 100) : 0
-  if (activeRuleCount > 0 && coverageRate < 40) {
-    warnings.push('规则覆盖率较低，建议补充关键学生规则')
-  }
-
   const estimatedMs = Math.max(
     300,
     Math.round((assignConfig.value.maxIterations / 100000) * Math.max(1, studentCount / 20) * 900)
