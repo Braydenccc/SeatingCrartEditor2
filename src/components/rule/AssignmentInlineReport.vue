@@ -6,9 +6,7 @@
         <svg viewBox="0 0 40 40" class="in-ring-svg">
           <circle class="in-ring-bg" cx="20" cy="20" r="16" />
           <circle class="in-ring-fill" cx="20" cy="20" r="16"
-            pathLength="100"
-            :stroke-dasharray="`${satPct} ${100 - satPct}`"
-            :style="{ stroke: gradeColor }" />
+            :style="{ stroke: gradeColor, strokeDasharray: `${satPct * circumference / 100} ${circumference - satPct * circumference / 100}` }" />
         </svg>
         <span class="in-ring-pct">{{ Math.round(satPct) }}%</span>
       </div>
@@ -77,6 +75,8 @@ const emit = defineEmits(['focus-rule'])
 
 const { renderRuleText } = useSeatRules()
 const showSatisfied = ref(false)
+
+const circumference = 2 * Math.PI * 16 // r=16, ≈100.53
 
 const satPct = computed(() => ((props.report?.satRate ?? 1) * 100))
 const ruleCount = computed(() => (props.report?.satisfied?.length || 0) + (props.report?.violated?.length || 0))
@@ -160,7 +160,6 @@ const gradeIcon = computed(() => {
   fill: none;
   stroke-width: 3.5;
   stroke-linecap: round;
-  stroke-dasharray: 0 100;
   transition: stroke-dasharray 0.8s ease;
 }
 
