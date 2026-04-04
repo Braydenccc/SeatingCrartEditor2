@@ -39,9 +39,14 @@ jobs:
         shell: pwsh
         run: |
           $TAG = $env:GITHUB_REF_NAME
+          # Ensure target dir exists for release upload staging.
           New-Item -ItemType Directory -Force -Path dist | Out-Null
-          # 重命名 Tauri 便携版 (根据 tauri.conf.json 中的 productName)
-          Move-Item "src-tauri/target/release/BraydenSCE.exe" "dist/BraydenSCE-Tauri-Portable-$TAG.exe"
+          $SOURCE = "src-tauri/target/release/BraydenSCE.exe"
+          if (-not (Test-Path $SOURCE)) {
+            throw "Tauri desktop executable not found: $SOURCE"
+          }
+          # 重命名 Tauri 桌面产物 (根据 tauri.conf.json 中的 productName)
+          Move-Item $SOURCE "dist/BraydenSCE-Tauri-Portable-$TAG.exe"
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
