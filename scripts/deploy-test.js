@@ -19,7 +19,7 @@ function runFileInherit(command, args) {
 }
 
 function posixShellQuote(value) {
-  return `'${String(value).replace(/'/g, `'\\''`)}'`;
+  return `'${String(value).replace(/'/g, "'\\''")}'`;
 }
 
 const targetPath = process.argv[2]?.trim();

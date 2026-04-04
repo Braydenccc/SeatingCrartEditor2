@@ -5,11 +5,11 @@ export function normalizeDeployPath(rawPath) {
   return String(rawPath ?? '').trim().replace(/^\/+|\/+$/g, '');
 }
 
-export function validateDeployPath(rawPath) {
+export function validateDeploySubPath(rawPath) {
   const safePath = normalizeDeployPath(rawPath);
 
   if (!safePath) {
-    throw new Error('部署路径不能为空。');
+    throw new Error('部署子路径不能为空。');
   }
 
   if (!PATH_ALLOWED_CHARS_REGEX.test(safePath)) {
@@ -49,7 +49,7 @@ export function resolveStagingTarget(branchName) {
     throw new Error(`无效分支：${normalizedBranch}，必须是 test 或 test/<path>。`);
   }
 
-  const deployPath = validateDeployPath(normalizedBranch.slice(5));
+  const deployPath = validateDeploySubPath(normalizedBranch.slice(5));
   return {
     deploySite: `test.sce.jbyc.cc/${deployPath}`,
     siteUrl: `${TEST_HOST}/${deployPath}`,
