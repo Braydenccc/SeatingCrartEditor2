@@ -448,6 +448,39 @@ const deleteHandler = () => {
   box-shadow: 0 0 0 3px rgba(255, 152, 0, 0.2);
 }
 
+@media (max-width: 1366px) and (min-width: 1025px), (max-height: 820px) and (min-width: 1025px) {
+  .student-item {
+    padding: 10px 12px;
+    margin-bottom: 8px;
+  }
+
+  .student-info {
+    gap: 8px;
+  }
+
+  .student-number {
+    min-width: 52px;
+    padding: 4px 8px;
+    font-size: 13px;
+  }
+
+  .student-name {
+    font-size: 14px;
+    padding: 3px 6px;
+    min-height: 24px;
+  }
+
+  .student-tag {
+    font-size: 11px;
+    padding: 3px 6px;
+  }
+
+  .delete-student-btn {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+}
+
 @keyframes pulse {
 
   0%,
