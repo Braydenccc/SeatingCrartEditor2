@@ -219,7 +219,7 @@ const deleteHandler = () => {
   --touch-target-outset: -8px;
   /* 移动端为姓名/删除按钮保留空间，标签区采用保守基准宽度 */
   --mobile-tags-flex-basis: 42%;
-  --scroll-cue-divider: rgba(35, 88, 123, 0.25);
+  --scroll-cue-divider: rgba(var(--color-primary-rgb), 0.25);
   contain: layout style;
   display: flex;
   justify-content: space-between;
@@ -543,7 +543,7 @@ const deleteHandler = () => {
     flex: 0 0 16px;
     align-self: stretch;
     /* 渐变需与卡片背景一致，便于表达“可横向滚动”的边缘提示 */
-    background: linear-gradient(to left, var(--student-item-bg), transparent);
+    background: linear-gradient(to left, var(--student-item-bg), rgba(var(--color-surface-rgb), 0));
     border-left: 1px solid var(--scroll-cue-divider);
     pointer-events: none;
   }
