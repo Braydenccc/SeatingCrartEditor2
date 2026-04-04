@@ -36,7 +36,10 @@
             <div v-else class="save-target-banner">
               <span class="material-symbols-rounded ui-icon banner-icon">{{ hasRetiehe ? 'cloud' : 'storage' }}</span>
               <span>保存至：<strong>{{ hasRetiehe ? 'SCE 云服务' : 'WebDAV 网盘' }}</strong></span>
-              <span v-if="backupMode && hasWebdav !== false" class="backup-hint">· 同时备份至 WebDAV ✓</span>
+              <span v-if="backupMode && hasWebdav !== false" class="backup-hint">
+                <span class="material-symbols-rounded ui-icon backup-hint-icon">check_circle</span>
+                同时备份至 WebDAV
+              </span>
             </div>
 
             <div class="form-group">
@@ -391,8 +394,15 @@ const formatSize = (bytes) => {
 }
 
 .backup-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   color: var(--color-success);
   font-weight: 500;
+}
+
+.backup-hint .backup-hint-icon {
+  font-size: 14px;
 }
 
 .cloud-tabs {

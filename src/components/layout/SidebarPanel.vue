@@ -261,7 +261,7 @@
             <!-- 操作按钮 -->
             <div class="assign-actions-grid">
               <button class="option-button rule-shortcut-btn" @click="showRuleEditor = true">
-                <span class="rule-shortcut-icon">📋</span>
+                <span class="material-symbols-rounded ui-icon">rule</span>
                 <span class="rule-shortcut-text">规则管理</span>
                 <span v-if="ruleCount > 0" class="rule-badge">{{ ruleCount }}</span>
               </button>
@@ -290,7 +290,10 @@
                   <span>冲突 {{ precheckResult.conflictCount }}</span>
                 </div>
                 <div v-if="precheckResult.blockingReasons.length > 0" class="precheck-list blocking">
-                  <div v-for="(item, idx) in precheckResult.blockingReasons" :key="`b-${idx}`">⛔ {{ item }}</div>
+                  <div v-for="(item, idx) in precheckResult.blockingReasons" :key="`b-${idx}`" class="precheck-item">
+                    <span class="material-symbols-rounded ui-icon">block</span>
+                    <span>{{ item }}</span>
+                  </div>
                 </div>
                 <div v-if="precheckResult.warnings.length > 0" class="precheck-list warning">
                   <div v-for="(item, idx) in precheckResult.warnings" :key="`w-${idx}`">警告：{{ item }}</div>
@@ -2738,6 +2741,16 @@ const formatLogTime = (timestamp) => {
   flex-direction: column;
   gap: 4px;
   font-size: 12px;
+}
+
+.precheck-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.precheck-item .ui-icon {
+  font-size: 14px;
 }
 
 .precheck-list.blocking {
