@@ -161,7 +161,7 @@ const props = defineProps({
 const { students } = useStudentData()
 const { tags } = useTagData()
 const { zones } = useZoneData()
-const { addRule, updateRule, validateRule, renderRuleText, normalizeRuleShape } = useSeatRules()
+const { addRule, updateRule, validateRule, renderRuleText } = useSeatRules()
 const { error } = useLogger()
 
 const QUICK_TEMPLATE_KEYS = {
@@ -333,16 +333,11 @@ const applyEditingRule = (rule) => {
     resetForm()
     return
   }
-  const normalized = normalizeRuleShape(rule)
-  subjectMode.value = normalized.subjectMode || 'single'
   selectedPredicate.value = rule.predicate || ''
   selectedPriority.value = rule.priority || RulePriority.PREFER
   description.value = rule.description || ''
-  subjectsA.value = normalized.subjectsA?.length
-    ? normalized.subjectsA.map(s => ({ ...s }))
-    : [{ type: 'person', id: null }]
-  subjectsB.value = normalized.subjectsB?.length
-    ? normalized.subjectsB.map(s => ({ ...s }))
+  subjects.value = rule.subjects?.length
+    ? rule.subjects.map(s => ({ ...s }))
     : [{ type: 'person', id: null }]
   paramValues.value = { ...(rule.params || (rule.predicate ? getDefaultParams(rule.predicate) : {})) }
 }
