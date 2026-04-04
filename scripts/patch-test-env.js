@@ -77,7 +77,7 @@ try {
 
   // 1. index.html
   let indexHtml = fs.readFileSync('index.html', 'utf8');
-  indexHtml = indexHtml.replace(/<title>([\s\S]*?)<\/title>/, (_, title) => {
+  indexHtml = indexHtml.replace(/<title[^>]*>([\s\S]*?)<\/title>/, (_, title) => {
     const cleanedTitle = String(title).trim().replace(/^\[test\]\s*/i, '');
     return `<title>[test] ${cleanedTitle}</title>`;
   });

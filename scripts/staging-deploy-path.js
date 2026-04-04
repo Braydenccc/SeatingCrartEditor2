@@ -22,10 +22,6 @@ export function validateDeployPath(rawPath) {
   }
 
   for (const segment of pathSegments) {
-    if (segment === '.' || segment === '..') {
-      throw new Error('部署路径不能包含 . 或 .. 段。');
-    }
-
     if (segment === 'test') {
       throw new Error('部署路径不能包含名为 test 的段。');
     }
