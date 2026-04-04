@@ -215,7 +215,8 @@ const deleteHandler = () => {
 <style scoped>
 .student-item {
   --student-item-bg: #fff;
-  --touch-target-expand: -8px;
+  --touch-target-outset: -8px;
+  --mobile-tags-flex-basis: 42%;
   --scroll-cue-divider: rgba(35, 88, 123, 0.25);
   contain: layout style;
   display: flex;
@@ -523,7 +524,7 @@ const deleteHandler = () => {
     display: flex;
     flex-wrap: nowrap;
     gap: 4px;
-    flex: 0 1 42%;
+    flex: 0 1 var(--mobile-tags-flex-basis);
     min-width: 90px;
     max-width: none;
     position: relative;
@@ -561,7 +562,7 @@ const deleteHandler = () => {
   .remove-tag-btn::before {
     content: '';
     position: absolute;
-    inset: var(--touch-target-expand);
+    inset: var(--touch-target-outset);
   }
 
   .add-tag-to-student-btn {
@@ -578,7 +579,7 @@ const deleteHandler = () => {
   .add-tag-to-student-btn::before {
     content: '';
     position: absolute;
-    inset: var(--touch-target-expand);
+    inset: var(--touch-target-outset);
   }
 
   .tag-option {
