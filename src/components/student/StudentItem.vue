@@ -20,7 +20,7 @@
         </span>
       </div>
 
-      <div class="student-tags">
+      <div class="student-tags" aria-label="可横向滚动查看更多标签">
         <span v-for="tagId in student.tags" :key="tagId" class="student-tag"
           :style="{ background: getTagColor(tagId) }">
           {{ getTagName(tagId) }}
@@ -214,7 +214,7 @@ const deleteHandler = () => {
 
 <style scoped>
 .student-item {
-  --student-item-bg: var(--color-surface, #fff);
+  --student-item-bg: #fff;
   --touch-target-outset: -8px;
   --mobile-tags-flex-basis: 42%;
   --scroll-cue-divider: rgba(35, 88, 123, 0.25);
