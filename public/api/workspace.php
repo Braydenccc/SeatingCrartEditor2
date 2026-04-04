@@ -1,7 +1,13 @@
 <?php
 // 热铁盒云函数 API - 工作区同步模块 (workspace.php)
 header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
+if (isset($_SERVER['HTTP_ORIGIN']) && isset($_SERVER['HTTP_HOST'])) {
+    $originHost = parse_url($_SERVER['HTTP_ORIGIN'], PHP_URL_HOST);
+    if (is_string($originHost) && strcasecmp($originHost, $_SERVER['HTTP_HOST']) === 0) {
+        header('Access-Control-Allow-Origin: ' . $_SERVER['HTTP_ORIGIN']);
+        header('Vary: Origin');
+    }
+}
 header('Access-Control-Allow-Methods: POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, X-CSRF-Token');
 
