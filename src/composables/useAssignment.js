@@ -505,6 +505,17 @@ export function useAssignment() {
       const violating = new Set()
       for (const rule of activeRules) {
         const subjects = expandSubject(rule, studentList)
+        if (rule.predicate === 'DISTRIBUTE_EVENLY' || rule.predicate === 'CLUSTER_TOGETHER') {
+          const groupPenalty = checkGroupViolation(rule, subjects, assignment)
+          if (groupPenalty > 0) {
+            for (const subj of subjects) {
+              if (subj.type === 'single' && assignment.get(subj.studentId)) {
+                violating.add(subj.studentId)
+              }
+            }
+          }
+          continue
+        }
         for (const subj of subjects) {
           const { violated } = checkViolation(rule, subj, assignment)
           if (violated) {
@@ -618,7 +629,9 @@ export function useAssignment() {
         if (studentC === studentA || studentC === partner) { stagnationCounter++; continue; }
         const seatC = current.get(studentC)
         const adjC = getAdjacentSeats(seatC)
-        const seatDId = adjC.length > 0 ? adjC[Math.floor(Math.random() * adjC.length)].id : assignedStudentIds[Math.floor(Math.random() * n)]
+        const seatDId = adjC.length > 0
+          ? adjC[Math.floor(Math.random() * adjC.length)].id
+          : current.get(assignedStudentIds[Math.floor(Math.random() * n)])
         const studentD = currentReverse.get(seatDId)
         
         if (studentD && studentD !== studentA && studentD !== partner && studentD !== studentC) {
@@ -741,6 +754,22 @@ export function useAssignment() {
 
     for (const rule of activeRules) {
       const subjects = expandSubject(rule, studentList)
+      if (rule.predicate === 'DISTRIBUTE_EVENLY' || rule.predicate === 'CLUSTER_TOGETHER') {
+        const penalty = checkGroupViolation(rule, subjects, solution)
+        if (penalty <= 0) {
+          satisfied.push(rule)
+        } else {
+          const names = subjects
+            .map(subj => studentList.find(st => st.id === subj.studentId)?.name ?? `ID:${subj.studentId}`)
+            .slice(0, 3)
+          violated.push({
+            rule,
+            violatingSubjects: names,
+            reason: '分组约束未满足（存在明显分散/不均衡）'
+          })
+        }
+        continue
+      }
       let isFullySatisfied = true
       const violationDetails = []
 
@@ -803,8 +832,6 @@ export function useAssignment() {
     const startTime = Date.now()
 
     try {
-      clearAllSeats()
-
       const studentList = students.value.map(s => ({ ...s }))
       const availableSeats = getAvailableSeats()
 
