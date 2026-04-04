@@ -176,6 +176,7 @@ import { useStudentData } from '@/composables/useStudentData'
 import { useTagData } from '@/composables/useTagData'
 import { useZoneData } from '@/composables/useZoneData'
 import { useSeatRules } from '@/composables/useSeatRules'
+import { useLogger } from '@/composables/useLogger'
 import {
   RulePriority,
   RULE_TYPE_LABELS,
@@ -199,6 +200,7 @@ const { students } = useStudentData()
 const { tags } = useTagData()
 const { zones } = useZoneData()
 const { addRule, updateRule, validateRule, renderRuleText, normalizeRuleShape } = useSeatRules()
+const { error } = useLogger()
 
 const QUICK_TEMPLATE_KEYS = {
   FRONT_ROW: 'front-row',
@@ -342,9 +344,13 @@ const onPredicateChange = () => {
 const handleAdd = () => {
   if (!canAdd.value) return
   if (isEditing.value) {
-    updateRule(props.editingRule.id, currentRulePayload.value)
-    emit('added', props.editingRule.id)
-    resetForm()
+    const updated = updateRule(props.editingRule.id, currentRulePayload.value)
+    if (updated) {
+      emit('added', props.editingRule.id)
+      resetForm()
+      return
+    }
+    error('当前编辑的规则不存在，可能已被删除或覆盖，请刷新规则列表后重试。')
     return
   }
   const result = addRule(currentRulePayload.value)
@@ -427,11 +433,11 @@ const applyQuickTemplate = (key) => {
 }
 
 watch(
-  () => props.editingRule,
-  (rule) => {
-    applyEditingRule(rule)
+  () => props.editingRule?.id ?? null,
+  () => {
+    applyEditingRule(props.editingRule)
   },
-  { immediate: true, deep: true }
+  { immediate: true }
 )
 </script>
 

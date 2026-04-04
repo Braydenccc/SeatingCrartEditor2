@@ -164,6 +164,7 @@ const handleImportRules = () => {
     }
 
     if (result.imported > 0) {
+      editingRuleId.value = ''
       success(`规则导入成功：${result.imported} 条`)
     } else {
       warning('未导入任何规则')
@@ -180,7 +181,7 @@ const onRuleAdded = () => {
 }
 
 const handleEditRule = (ruleId) => {
-  editingRuleId.value = ruleId || ''
+  editingRuleId.value = ruleId
 }
 
 // 当模态框关闭时重置 tab
