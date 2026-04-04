@@ -111,6 +111,8 @@ npm run deploy:test
 npm run deploy:test -- <path>
 ```
 
+`<path>` 仅允许字母、数字、`.`、`_`、`-`、`/`，且不能包含空段、`.`、`..` 或 `test` 段。
+
 ### Windows 安装包编译
 
 #### NSIS 独立安装包（约 20 MB）

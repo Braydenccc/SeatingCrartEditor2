@@ -39,8 +39,19 @@ if (!/^[a-zA-Z0-9._/-]+$/.test(safePath)) {
   process.exit(1);
 }
 
-if (safePath === 'test' || safePath.startsWith('test/')) {
-  console.error('部署路径不能是 test 或以 test/ 开头。');
+const pathSegments = safePath.split('/').filter(Boolean);
+if (pathSegments.length === 0) {
+  console.error('部署路径不能为空。');
+  process.exit(1);
+}
+
+if (pathSegments.some((segment) => segment === '.' || segment === '..')) {
+  console.error('部署路径不能包含 . 或 .. 段。');
+  process.exit(1);
+}
+
+if (pathSegments.some((segment) => segment === 'test')) {
+  console.error('部署路径不能包含 test 段。');
   process.exit(1);
 }
 

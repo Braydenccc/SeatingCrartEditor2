@@ -90,6 +90,17 @@ jobs:
             SITE_URL="https://test.sce.jbyc.cc"
           else
             DEPLOY_PATH="${BRANCH_NAME#test/}"
+            if ! [[ "$DEPLOY_PATH" =~ ^[a-zA-Z0-9._/-]+$ ]]; then
+              echo "::error::Invalid deploy path '$DEPLOY_PATH': only letters, numbers, dot, underscore, hyphen and slash are allowed."
+              exit 1
+            fi
+            IFS='/' read -r -a SEGMENTS <<< "$DEPLOY_PATH"
+            for segment in "${SEGMENTS[@]}"; do
+              if [ -z "$segment" ] || [ "$segment" = "." ] || [ "$segment" = ".." ] || [ "$segment" = "test" ]; then
+                echo "::error::Invalid deploy path segment '$segment'."
+                exit 1
+              fi
+            done
             DEPLOY_SITE="test.sce.jbyc.cc/${DEPLOY_PATH}"
             SITE_URL="https://test.sce.jbyc.cc/${DEPLOY_PATH}"
           fi
