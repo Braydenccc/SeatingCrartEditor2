@@ -3,7 +3,7 @@
     <div class="header-left">
       <div v-if="isLoggedIn" class="user-menu-container" ref="menuContainer">
         <div class="user-info" @click="toggleDropdown">
-          <span class="user-avatar" :title="authType === 'webdav' ? 'WebDAV 模式' : '普通账号'">{{ authType === 'webdav' ? '☁️' : '👤' }}</span>
+          <span class="user-avatar" :title="authType === 'webdav' ? 'WebDAV 模式' : '普通账号'">{{ authType === 'webdav' ? '云' : '账户' }}</span>
           <span class="welcome-text">{{ currentUser?.username }}</span>
           <span class="dropdown-icon">▼</span>
         </div>
@@ -11,16 +11,16 @@
           <div v-if="showDropdown" class="user-dropdown">
             <!-- Sync Service Settings entry -->
             <button v-if="hasRetiehe" class="dropdown-item" @click="openSyncSettings">
-              <span class="item-icon">⚙️</span> 同步设置
+              <span class="item-icon">设置</span> 同步设置
             </button>
             <div class="dropdown-divider" v-if="hasRetiehe"></div>
             
             <button class="dropdown-item" @click="openWorkspaceManagement">
-              <span class="item-icon">☁️</span> 工作区管理
+              <span class="item-icon">云端</span> 工作区管理
             </button>
 
             <button v-if="!hasRetiehe" class="dropdown-item" @click="emit('open-login', 'login'); showDropdown = false">
-              <span class="item-icon">➕</span> 登录 SCE 账号
+              <span class="item-icon">新增</span> 登录 SCE 账号
             </button>
             
             <div class="dropdown-divider"></div>
@@ -32,7 +32,7 @@
         </Transition>
       </div>
       <button v-else class="auth-btn login-btn" @click="emit('open-login')">
-        <span class="btn-icon">☁️</span>登录
+        <span class="btn-icon">云端</span>登录
       </button>
 
       <h1 class="header-text">BraydenSCE V2</h1>
@@ -118,11 +118,11 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  background: #23587b;
+  background: var(--color-primary);
   height: 100px;
-  color: aliceblue;
+  color: var(--color-surface);
   padding: 0 30px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-md);
 }
 
 .header-left {
@@ -149,9 +149,9 @@ onBeforeUnmount(() => {
   position: absolute;
   top: calc(100% + 12px);
   left: 0;
-  background: white;
+  background: var(--color-surface);
   border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-lg);
   min-width: 140px;
   z-index: 100;
   overflow: hidden;
@@ -167,18 +167,18 @@ onBeforeUnmount(() => {
   background: transparent;
   text-align: left;
   font-size: 14px;
-  color: #333;
+  color: var(--color-text-primary);
   cursor: pointer;
   transition: background 0.2s;
   gap: 8px;
 }
 
 .dropdown-item:hover {
-  background: #f5f5f5;
+  background: var(--color-bg-subtle);
 }
 
 .dropdown-item.text-danger {
-  color: #e53935;
+  color: var(--color-danger);
 }
 
 .fade-slide-enter-active,
@@ -312,7 +312,7 @@ onBeforeUnmount(() => {
 }
 
 .header-subtitle a {
-  color: #f0f0f0;
+  color: var(--color-surface);
   text-decoration: underline;
 }
 
@@ -320,7 +320,7 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #f0f0f0;
+  color: var(--color-surface);
   transition: opacity 0.2s, transform 0.2s;
 }
 
