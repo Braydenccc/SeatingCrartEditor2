@@ -34,9 +34,13 @@
 
             <!-- 单云时显示目标提示条 -->
             <div v-else class="save-target-banner">
-              <span class="banner-icon">{{ hasRetiehe ? '云' : '网' }}</span>
+              <Cloud v-if="hasRetiehe" class="ui-icon banner-icon" />
+              <HardDrive v-else class="ui-icon banner-icon" />
               <span>保存至：<strong>{{ hasRetiehe ? 'SCE 云服务' : 'WebDAV 网盘' }}</strong></span>
-              <span v-if="backupMode && hasWebdav !== false" class="backup-hint">· 同时备份至 WebDAV（已启用）</span>
+              <span v-if="backupMode && hasWebdav !== false" class="backup-hint">
+                <CheckCircle2 class="ui-icon backup-hint-icon" />
+                同时备份至 WebDAV
+              </span>
             </div>
 
             <div class="form-group">
@@ -92,7 +96,7 @@
             </div>
             
             <div v-if="!currentTabWorkspaces || currentTabWorkspaces.length === 0" class="empty-state mt-2">
-              <div class="empty-icon">空</div>
+              <Inbox class="ui-icon empty-icon" />
               <p>{{ activeTab === 'webdav' ? 'WebDAV 网盘上' : 'SCE 云端' }}暂无工作区</p>
               <p class="empty-hint">切换到「保存」模式将当前编辑内容上传到云端</p>
             </div>
@@ -103,7 +107,7 @@
                 class="workspace-card"
               >
                 <div class="card-content" @click="handleLoad(ws.fileId, ws.source)">
-                  <div class="card-icon">档</div>
+                  <Folder class="ui-icon card-icon" />
                   <div class="card-details">
                     <h4 class="ws-name">{{ ws.metadata.name }}</h4>
                     <p class="ws-meta">
@@ -113,7 +117,9 @@
                   </div>
                 </div>
                 <div class="card-actions">
-                  <button class="icon-btn delete-btn" title="删除此工作区" @click.stop="confirmDelete(ws)">删</button>
+                  <button class="icon-btn delete-btn" title="删除此工作区" @click.stop="confirmDelete(ws)">
+                    <Trash2 class="ui-icon" />
+                  </button>
                 </div>
               </div>
             </div>
@@ -128,6 +134,7 @@
 
 <script setup>
 import { ref, watch, computed } from 'vue'
+import { CheckCircle2, Cloud, Folder, HardDrive, Inbox, Trash2 } from 'lucide-vue-next'
 import { useCloudWorkspace } from '@/composables/useCloudWorkspace'
 import { useWorkspace } from '@/composables/useWorkspace'
 import { useLogger } from '@/composables/useLogger'
