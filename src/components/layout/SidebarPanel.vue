@@ -1580,6 +1580,62 @@ const formatLogTime = (timestamp) => {
   font-size: 13px;
 }
 
+/* 低分辨率桌面优化 */
+@media (max-width: 1366px) and (min-width: 1025px), (max-height: 820px) and (min-width: 1025px) {
+  .tabs-bar {
+    width: 18%;
+  }
+
+  .tab-button {
+    font-size: 13px;
+    gap: 4px;
+  }
+
+  .tab-label {
+    font-size: 13px;
+  }
+
+  .options-bar {
+    width: 82%;
+  }
+
+  .option-content {
+    padding: 14px;
+  }
+
+  .tab-header h3 {
+    font-size: 16px;
+  }
+
+  .options-group {
+    gap: 8px;
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+  }
+
+  .option-button {
+    padding: 9px 12px;
+    font-size: 13px;
+  }
+
+  .input-group label {
+    font-size: 12px;
+  }
+
+  .input-group input[type="number"],
+  .input-group input[type="text"],
+  .checkbox-label {
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+
+  .log-area {
+    height: 160px;
+    min-height: 160px;
+    max-height: 160px;
+  }
+}
+
 /* ==================== tab-icon (desktop 隐藏) ==================== */
 .tab-icon {
   display: none;
