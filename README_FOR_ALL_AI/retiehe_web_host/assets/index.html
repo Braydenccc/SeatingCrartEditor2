@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>热铁盒云函数示例</title>
+    <!-- 使用 CDN 引入常见资源 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.7/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="mb-4">热铁盒云函数示例</h1>
+
+        <!-- 访问统计示例 -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>访问统计 (数据库)</h5>
+            </div>
+            <div class="card-body">
+                <p>这个示例使用 KV 数据库统计每个名字的访问次数</p>
+                <a href="visitor-counter.php" class="btn btn-primary">PHP 版本</a>
+                <a href="visitor-counter.node.js" class="btn btn-secondary">Node.js 版本</a>
+            </div>
+        </div>
+
+        <!-- API 示例 -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>RESTful API</h5>
+            </div>
+            <div class="card-body">
+                <p>简单的 REST 接口示例，支持 GET 和 POST</p>
+                <a href="api.php" class="btn btn-primary">PHP API</a>
+                <a href="api.node.js" class="btn btn-secondary">Node.js API</a>
+            </div>
+        </div>
+
+        <!-- 表单示例 -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>表单提交</h5>
+            </div>
+            <div class="card-body">
+                <p>演示如何处理表单提交并保存到数据库</p>
+                <a href="form.php" class="btn btn-primary">PHP 表单</a>
+                <a href="form.node.js" class="btn btn-secondary">Node.js 表单</a>
+            </div>
+        </div>
+
+        <!-- Session 示例 -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>用户登录 (Session)</h5>
+            </div>
+            <div class="card-body">
+                <p>演示使用 Session 管理用户登录状态</p>
+                <a href="login.php" class="btn btn-primary">PHP 登录</a>
+            </div>
+        </div>
+
+        <!-- 文件操作示例 -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>文件读写 (JSON)</h5>
+            </div>
+            <div class="card-body">
+                <p>演示如何读写 JSON 配置文件</p>
+                <a href="config-demo.php" class="btn btn-primary">PHP 版本</a>
+                <a href="config-demo.node.js" class="btn btn-secondary">Node.js 版本</a>
+            </div>
+        </div>
+
+        <!-- 工具函数示例 -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>模块化代码</h5>
+            </div>
+            <div class="card-body">
+                <p>演示如何引入和使用工具函数模块</p>
+                <a href="modular.php" class="btn btn-primary">PHP 模块</a>
+                <a href="modular.node.js" class="btn btn-secondary">Node.js 模块</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.7/js/bootstrap.min.js"></script>
+</body>
+</html>
