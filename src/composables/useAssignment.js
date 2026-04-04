@@ -485,6 +485,7 @@ export function useAssignment() {
     let currentReverse = buildReverse(current)
 
     const assignedStudentIds = [...current.keys()]
+    const assignedSeatIds = [...current.values()]
     const n = assignedStudentIds.length
 
     // 计算初始的空座位
@@ -631,7 +632,7 @@ export function useAssignment() {
         const adjC = getAdjacentSeats(seatC)
         const seatDId = adjC.length > 0
           ? adjC[Math.floor(Math.random() * adjC.length)].id
-          : current.get(assignedStudentIds[Math.floor(Math.random() * n)])
+          : assignedSeatIds[Math.floor(Math.random() * assignedSeatIds.length)]
         const studentD = currentReverse.get(seatDId)
         
         if (studentD && studentD !== studentA && studentD !== partner && studentD !== studentC) {
