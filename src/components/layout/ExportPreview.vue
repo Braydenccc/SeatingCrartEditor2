@@ -595,7 +595,12 @@ const handleDownload = async () => {
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)
-  emit('exported', url)
+  try {
+    const exportedBlob = await fetch(url).then((res) => res.blob())
+    emit('exported', exportedBlob)
+  } catch {
+    emit('exported', null)
+  }
 }
 
 // ── 下载 Excel ──

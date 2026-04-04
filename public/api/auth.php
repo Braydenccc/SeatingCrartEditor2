@@ -1,10 +1,58 @@
 <?php
 // 热铁盒云函数 API - 用户验证模块 (auth.php)
 header('Content-Type: application/json; charset=utf-8');
-if (isset($_SERVER['HTTP_ORIGIN']) && isset($_SERVER['HTTP_HOST'])) {
-    $originHost = parse_url($_SERVER['HTTP_ORIGIN'], PHP_URL_HOST);
-    if (is_string($originHost) && strcasecmp($originHost, $_SERVER['HTTP_HOST']) === 0) {
-        header('Access-Control-Allow-Origin: ' . $_SERVER['HTTP_ORIGIN']);
+
+function getRequestScheme() {
+    $https = isset($_SERVER['HTTPS']) ? strtolower((string)$_SERVER['HTTPS']) : '';
+    if ($https !== '' && $https !== 'off' && $https !== '0') {
+        return 'https';
+    }
+    if (isset($_SERVER['REQUEST_SCHEME'])) {
+        $scheme = strtolower((string)$_SERVER['REQUEST_SCHEME']);
+        if ($scheme === 'http' || $scheme === 'https') {
+            return $scheme;
+        }
+    }
+    return (isset($_SERVER['SERVER_PORT']) && (string)$_SERVER['SERVER_PORT'] === '443') ? 'https' : 'http';
+}
+
+function normalizeOrigin($origin) {
+    if (!is_string($origin) || trim($origin) === '') {
+        return null;
+    }
+    $parts = parse_url(trim($origin));
+    if (!is_array($parts) || !isset($parts['scheme'], $parts['host'])) {
+        return null;
+    }
+    $scheme = strtolower($parts['scheme']);
+    if ($scheme !== 'http' && $scheme !== 'https') {
+        return null;
+    }
+    $host = strtolower($parts['host']);
+    $port = isset($parts['port']) ? (int)$parts['port'] : null;
+    if ($port !== null && ($port < 1 || $port > 65535)) {
+        return null;
+    }
+    if ($port === 80 && $scheme === 'http') {
+        $port = null;
+    } elseif ($port === 443 && $scheme === 'https') {
+        $port = null;
+    }
+    return $scheme . '://' . $host . ($port !== null ? ':' . $port : '');
+}
+
+function getCurrentOrigin() {
+    if (!isset($_SERVER['HTTP_HOST']) || !is_string($_SERVER['HTTP_HOST']) || trim($_SERVER['HTTP_HOST']) === '') {
+        return null;
+    }
+    return normalizeOrigin(getRequestScheme() . '://' . trim($_SERVER['HTTP_HOST']));
+}
+
+if (isset($_SERVER['HTTP_ORIGIN'])) {
+    $requestOrigin = normalizeOrigin($_SERVER['HTTP_ORIGIN']);
+    $currentOrigin = getCurrentOrigin();
+    if ($requestOrigin !== null && $currentOrigin !== null && hash_equals($currentOrigin, $requestOrigin)) {
+        header('Access-Control-Allow-Origin: ' . $requestOrigin);
         header('Vary: Origin');
     }
 }

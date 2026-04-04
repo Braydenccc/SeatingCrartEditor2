@@ -561,12 +561,20 @@ const isExporting = ref(false)
 let lastExportObjectUrl = ''
 
 // 导出完成回调
-const onExported = (url) => {
-  if (lastExportObjectUrl && lastExportObjectUrl !== url) {
+const onExported = (payload) => {
+  if (!(payload instanceof Blob)) {
+    if (lastExportObjectUrl) {
+      URL.revokeObjectURL(lastExportObjectUrl)
+      lastExportObjectUrl = ''
+    }
+    lastExportUrl.value = ''
+    return
+  }
+  if (lastExportObjectUrl) {
     URL.revokeObjectURL(lastExportObjectUrl)
   }
-  lastExportObjectUrl = url
-  lastExportUrl.value = url
+  lastExportObjectUrl = URL.createObjectURL(payload)
+  lastExportUrl.value = lastExportObjectUrl
 }
 
 // 工作区管理 (云端)

@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 import { useAuth } from './useAuth'
 import { useWebDav } from './useWebDav'
-import { getCookie } from './useAuth'
+import { getOrCreateCsrfToken } from './useAuth'
 
 export function useCloudWorkspace() {
     const { currentUser, token, authType, webdavConfig, backupMode } = useAuth()
@@ -48,7 +48,7 @@ export function useCloudWorkspace() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-Token': getCookie('sce_csrf') || ''
+                    'X-CSRF-Token': getOrCreateCsrfToken()
                 },
                 body: JSON.stringify({
                     action,
