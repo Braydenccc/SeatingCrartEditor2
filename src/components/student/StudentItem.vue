@@ -515,13 +515,37 @@ const deleteHandler = () => {
     font-size: 14px;
   }
 
-  /* 移动端隐藏标签以节省空间 */
+  /* 移动端保留标签编辑能力 */
   .student-tags {
-    display: none;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 4px;
+    max-width: 40%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .student-tag {
+    flex-shrink: 0;
+    font-size: 11px;
+    padding: 3px 6px;
+  }
+
+  .remove-tag-btn {
+    width: 14px;
+    height: 14px;
+    font-size: 12px;
   }
 
   .add-tag-to-student-btn {
-    display: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    font-size: 14px;
   }
 
   .tag-option {
