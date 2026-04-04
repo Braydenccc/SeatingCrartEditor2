@@ -24,9 +24,9 @@
         <span v-for="tagId in student.tags" :key="tagId" class="student-tag"
           :style="{ background: getTagColor(tagId) }">
           {{ getTagName(tagId) }}
-          <button class="remove-tag-btn" @click="removeTag(tagId)">×</button>
+          <button class="remove-tag-btn" :aria-label="`移除标签 ${getTagName(tagId)}`" @click="removeTag(tagId)">×</button>
         </span>
-        <button ref="addBtnRef" class="add-tag-to-student-btn" @click.stop="toggleTagPicker">+</button>
+        <button ref="addBtnRef" class="add-tag-to-student-btn" aria-label="添加标签" @click.stop="toggleTagPicker">+</button>
       </div>
     </div>
 
@@ -214,7 +214,7 @@ const deleteHandler = () => {
 
 <style scoped>
 .student-item {
-  --student-item-bg: #fff;
+  --student-item-bg: var(--color-surface, #fff);
   --touch-target-outset: -8px;
   --mobile-tags-flex-basis: 42%;
   --scroll-cue-divider: rgba(35, 88, 123, 0.25);
