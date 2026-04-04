@@ -264,6 +264,7 @@ const excelScrollRef = ref(null)
 const excelContentRef = ref(null)
 const excelScale = ref(1)
 let excelResizeObserver = null
+let lastPreviewObjectUrl = ''
 
 const updateExcelScale = () => {
   if (!excelScrollRef.value || !excelContentRef.value || activeTab.value !== 'excel') return
@@ -557,7 +558,12 @@ const generatePreview = () => {
   debounceTimer = setTimeout(async () => {
     isGenerating.value = true
     try {
-      previewUrl.value = await exportToImage()
+      const nextUrl = await exportToImage()
+      if (lastPreviewObjectUrl) {
+        URL.revokeObjectURL(lastPreviewObjectUrl)
+      }
+      lastPreviewObjectUrl = nextUrl
+      previewUrl.value = nextUrl
     } catch {
       previewUrl.value = ''
     } finally {
@@ -568,10 +574,19 @@ const generatePreview = () => {
 
 // ── 下载图片 ──
 const handleDownload = async () => {
+  let generatedForDownload = false
   let url = previewUrl.value
   if (!url) {
     isGenerating.value = true
-    try { url = await exportToImage(); previewUrl.value = url }
+    try {
+      url = await exportToImage()
+      generatedForDownload = true
+      previewUrl.value = url
+      if (lastPreviewObjectUrl) {
+        URL.revokeObjectURL(lastPreviewObjectUrl)
+      }
+      lastPreviewObjectUrl = url
+    }
     catch { return }
     finally { isGenerating.value = false }
   }
@@ -582,6 +597,9 @@ const handleDownload = async () => {
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)
+  if (generatedForDownload) {
+    // 保留为当前预览，由全局生命周期统一回收
+  }
   emit('exported', url)
 }
 
@@ -777,6 +795,10 @@ onMounted(() => {
 onBeforeUnmount(() => {
   if (debounceTimer) clearTimeout(debounceTimer)
   if (excelResizeObserver) excelResizeObserver.disconnect()
+  if (lastPreviewObjectUrl) {
+    URL.revokeObjectURL(lastPreviewObjectUrl)
+    lastPreviewObjectUrl = ''
+  }
 })
 </script>
 
