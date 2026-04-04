@@ -506,7 +506,7 @@ const formatSize = (bytes) => {
 .spinner {
   width: 30px;
   height: 30px;
-  border: 3px solid rgba(35, 88, 123, 0.1);
+  border: 3px solid rgba(var(--color-primary-rgb), 0.1);
   border-radius: 50%;
   border-top-color: var(--color-primary);
   animation: spin 1s ease-in-out infinite;

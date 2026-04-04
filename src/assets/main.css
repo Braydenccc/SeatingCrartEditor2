@@ -30,6 +30,15 @@
 }
 
 .material-symbols-rounded.ui-icon {
+  font-family: 'Material Symbols Rounded';
+  font-weight: normal;
+  font-style: normal;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
   font-variation-settings: 'FILL' 0;
   font-size: 18px;
   line-height: 1;
