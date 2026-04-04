@@ -39,6 +39,7 @@ jobs:
         shell: pwsh
         run: |
           $TAG = $env:GITHUB_REF_NAME
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
           # 重命名 Tauri 便携版 (根据 tauri.conf.json 中的 productName)
           Move-Item "src-tauri/target/release/BraydenSCE.exe" "dist/BraydenSCE-Tauri-Portable-$TAG.exe"
 
