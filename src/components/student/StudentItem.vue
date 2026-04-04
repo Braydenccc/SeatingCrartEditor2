@@ -214,8 +214,10 @@ const deleteHandler = () => {
 
 <style scoped>
 .student-item {
-  --student-item-bg: #fff;
+  --student-item-bg: var(--color-surface);
+  /* 使用负 inset 扩展命中区域：绝对定位伪元素会向四周外扩 */
   --touch-target-outset: -8px;
+  /* 移动端为姓名/删除按钮保留空间，标签区采用保守基准宽度 */
   --mobile-tags-flex-basis: 42%;
   --scroll-cue-divider: rgba(35, 88, 123, 0.25);
   contain: layout style;
