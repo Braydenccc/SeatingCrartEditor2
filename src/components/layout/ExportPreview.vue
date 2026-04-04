@@ -574,13 +574,11 @@ const generatePreview = () => {
 
 // ── 下载图片 ──
 const handleDownload = async () => {
-  let generatedForDownload = false
   let url = previewUrl.value
   if (!url) {
     isGenerating.value = true
     try {
       url = await exportToImage()
-      generatedForDownload = true
       previewUrl.value = url
       if (lastPreviewObjectUrl) {
         URL.revokeObjectURL(lastPreviewObjectUrl)
@@ -597,9 +595,6 @@ const handleDownload = async () => {
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)
-  if (generatedForDownload) {
-    // 保留为当前预览，由全局生命周期统一回收
-  }
   emit('exported', url)
 }
 

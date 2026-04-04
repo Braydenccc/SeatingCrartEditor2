@@ -15,6 +15,12 @@ if (!class_exists('Database')) {
     exit(1);
 }
 
+/**
+ * 输出 JSON 响应并结束请求。
+ *
+ * @param array $payload 响应体数据
+ * @param int $code HTTP 状态码；>=400 时以非零状态退出，便于日志识别失败
+ */
 function respond($payload, $code = 200) {
     http_response_code($code);
     echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP);

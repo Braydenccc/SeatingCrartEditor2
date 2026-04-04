@@ -33,7 +33,7 @@ function ensureCsrfMatched() {
 
 function issueSessionToken($sessionDb, $username) {
     try {
-        $token = bin2hex(random_bytes(24));
+        $token = bin2hex(random_bytes(32));
     } catch (Exception $e) {
         $token = hash('sha256', $username . ':' . microtime(true) . ':' . uniqid('', true));
     }
