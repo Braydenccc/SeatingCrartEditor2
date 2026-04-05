@@ -49,6 +49,7 @@ Thumbs.db
 coverage/
 *.local
 .local-*.json
+pnpm-lock.yaml
 草稿/seat_chart_2025-11-08T19-09-44.png
 
 # Editor project files
