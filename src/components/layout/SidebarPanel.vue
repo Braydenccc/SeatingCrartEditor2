@@ -9,7 +9,7 @@
       <div class="tabs-bar">
         <button v-for="tab in tabs" :key="tab.id" class="tab-button" :class="{ active: activeTab === tab.id }"
           @click="setActiveTab(tab.id)">
-          <span class="tab-icon">{{ tab.icon }}</span>
+          <component :is="tab.icon" class="tab-icon ui-icon" />
           <span class="tab-label">{{ tab.label }}</span>
         </button>
       </div>
@@ -23,16 +23,16 @@
             <input ref="workspaceInput" type="file" accept=".sce,.bydsce.json" style="display: none"
               @change="handleLoadWorkspace" />
             <button class="option-button" @click="$refs.workspaceInput.click()">
-              <span>加载本地</span>
+              <span class="btn-content"><FolderOpen class="ui-icon" />加载本地</span>
             </button>
             <button class="option-button" @click="handleSaveWorkspace">
-              <span>保存到本地</span>
+              <span class="btn-content"><Save class="ui-icon" />保存到本地</span>
             </button>
             <button class="option-button" @click="handleCloudLoad">
-              <span>从云端加载</span>
+              <span class="btn-content"><CloudDownload class="ui-icon" />从云端加载</span>
             </button>
             <button class="option-button primary" @click="handleCloudSave">
-              <span>保存至云端</span>
+              <span class="btn-content"><CloudUpload class="ui-icon" />保存至云端</span>
             </button>
           </div>
 
@@ -185,7 +185,7 @@
                   </span>
                   <input class="zone-rot-name-input" v-model="group.name"
                     @click.stop title="点击修改组名" />
-                  <button class="zone-rot-del" @click="handleDeleteGroup(group.id)">删</button>
+                  <button class="zone-rot-del" @click="handleDeleteGroup(group.id)"><X class="ui-icon" /></button>
                 </div>
 
                 <!-- 组内选区列表 -->
@@ -203,12 +203,12 @@
                     <input class="zone-rot-zone-name-input" v-model="zone.name" @click.stop/>
                     <!-- 循环箭头 -->
                     <span v-if="group.type === 'cycle'" class="zone-rot-arrow">
-                      {{ idx < group.zones.length - 1 ? '续' : '回' }}
+                      {{ idx < group.zones.length - 1 ? '→' : '↩' }}
                     </span>
                     <!-- 互换箭头 -->
-                    <span v-if="group.type === 'swap' && idx === 0" class="zone-rot-arrow">换</span>
+                    <span v-if="group.type === 'swap' && idx === 0" class="zone-rot-arrow">⇄</span>
                     <span class="zone-rot-count">{{ zone.seatIds.length }}座</span>
-                    <button class="zone-rot-del" @click.stop="handleDeleteZoneFromGroup(group.id, zone.id)">删</button>
+                    <button class="zone-rot-del" @click.stop="handleDeleteZoneFromGroup(group.id, zone.id)"><X class="ui-icon" /></button>
                   </div>
 
                   <!-- 添加选区按钮（在组内） -->
@@ -261,7 +261,7 @@
             <!-- 操作按钮 -->
             <div class="assign-actions-grid">
               <button class="option-button rule-shortcut-btn" @click="showRuleEditor = true">
-                <span class="rule-shortcut-icon">规</span>
+                <Scale class="ui-icon" />
                 <span class="rule-shortcut-text">规则管理</span>
                 <span v-if="ruleCount > 0" class="rule-badge">{{ ruleCount }}</span>
               </button>
@@ -290,7 +290,10 @@
                   <span>冲突 {{ precheckResult.conflictCount }}</span>
                 </div>
                 <div v-if="precheckResult.blockingReasons.length > 0" class="precheck-list blocking">
-                  <div v-for="(item, idx) in precheckResult.blockingReasons" :key="`b-${idx}`">阻断：{{ item }}</div>
+                  <div v-for="(item, idx) in precheckResult.blockingReasons" :key="`b-${idx}`" class="precheck-item">
+                    <CircleX class="ui-icon" />
+                    <span>{{ item }}</span>
+                  </div>
                 </div>
                 <div v-if="precheckResult.warnings.length > 0" class="precheck-list warning">
                   <div v-for="(item, idx) in precheckResult.warnings" :key="`w-${idx}`">警告：{{ item }}</div>
@@ -396,18 +399,20 @@
   </div>
 
   <!-- 导出设置弹窗 -->
-  <ExportDialog :visible="showExportDialog" @close="showExportDialog = false" @exported="onExported" />
+  <ExportDialog v-if="showExportDialog" :visible="showExportDialog" @close="showExportDialog = false" @exported="onExported" />
 
   <!-- 云端工作区弹窗 -->
-  <CloudWorkspaceDialog 
-    :visible="showCloudDialog" 
-    :mode="cloudDialogMode" 
-    @update:visible="showCloudDialog = $event" 
+  <CloudWorkspaceDialog
+    v-if="showCloudDialog"
+    :visible="showCloudDialog"
+    :mode="cloudDialogMode"
+    @update:visible="showCloudDialog = $event"
     @success="handleCloudSuccess"
   />
 
   <!-- 座位规则编辑器模态框 -->
   <SeatRuleEditor
+    v-if="showRuleEditor"
     :visible="showRuleEditor"
     initialTab="rules"
     :focus-rule-id="focusedRuleId"
@@ -419,23 +424,11 @@
 
 <script setup>
 import { ref, onMounted, onBeforeUnmount, watch, computed, defineAsyncComponent } from 'vue'
-import LoadingSpinner from '../ui/LoadingSpinner.vue'
+import { CircleX, CloudDownload, CloudUpload, Download, Edit3, FileText, FolderOpen, Save, Scale, Shuffle, X } from 'lucide-vue-next'
 
-const SeatRuleEditor = defineAsyncComponent({
-  loader: () => import('../relation/SeatRuleEditor.vue'),
-  loadingComponent: LoadingSpinner,
-  delay: 200
-})
-const ExportDialog = defineAsyncComponent({
-  loader: () => import('./ExportPreview.vue'),
-  loadingComponent: LoadingSpinner,
-  delay: 200
-})
-const CloudWorkspaceDialog = defineAsyncComponent({
-  loader: () => import('../workspace/CloudWorkspaceDialog.vue'),
-  loadingComponent: LoadingSpinner,
-  delay: 200
-})
+const SeatRuleEditor = defineAsyncComponent(() => import('../relation/SeatRuleEditor.vue'))
+const ExportDialog = defineAsyncComponent(() => import('./ExportPreview.vue'))
+const CloudWorkspaceDialog = defineAsyncComponent(() => import('../workspace/CloudWorkspaceDialog.vue'))
 
 import { useSidebar } from '@/composables/useSidebar'
 import { useSeatChart } from '@/composables/useSeatChart'
@@ -542,10 +535,10 @@ const handleApplyZoneRotation = () => {
 }
 
 const tabs = [
-  { id: 1, label: '文件', icon: '文' },
-  { id: 2, label: '编辑', icon: '编' },
-  { id: 3, label: '排位', icon: '排' },
-  { id: 4, label: '导出', icon: '导' }
+  { id: 1, label: '文件', icon: FileText },
+  { id: 2, label: '编辑', icon: Edit3 },
+  { id: 3, label: '排位', icon: Shuffle },
+  { id: 4, label: '导出', icon: Download }
 ]
 
 // 座位配置表单
@@ -1912,8 +1905,18 @@ const formatLogTime = (timestamp) => {
 /* ==================== tab-icon (desktop 隐藏) ==================== */
 .tab-icon {
   display: none;
-  font-size: 20px;
+  font-size: 18px;
   line-height: 1;
+}
+
+.btn-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.zone-rot-del .ui-icon {
+  font-size: 14px;
 }
 
 /* ==================== 移动端遮罩 ==================== */
@@ -2020,7 +2023,7 @@ const formatLogTime = (timestamp) => {
 
   .tab-icon {
     display: block;
-    font-size: 20px;
+    font-size: 18px;
     line-height: 1;
   }
 
@@ -2106,7 +2109,7 @@ const formatLogTime = (timestamp) => {
   }
 
   .tab-icon {
-    font-size: 18px;
+    font-size: 16px;
   }
 
   .tab-label {
@@ -2815,6 +2818,16 @@ const formatLogTime = (timestamp) => {
   flex-direction: column;
   gap: 4px;
   font-size: 12px;
+}
+
+.precheck-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.precheck-item .ui-icon {
+  font-size: 14px;
 }
 
 .precheck-list.blocking {
